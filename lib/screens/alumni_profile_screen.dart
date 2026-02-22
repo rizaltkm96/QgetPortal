@@ -16,6 +16,7 @@ class AlumniProfileScreen extends StatefulWidget {
 class _AlumniProfileScreenState extends State<AlumniProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isFollowing = false;
 
   @override
   void initState() {
@@ -60,8 +61,11 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             color: Colors.black.withOpacity(0.4),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 20),
+          child: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
         ),
       ),
       actions: [
@@ -72,8 +76,11 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             borderRadius: BorderRadius.circular(12),
           ),
           child: IconButton(
-            icon: const Icon(Icons.more_horiz_rounded,
-                color: Colors.white, size: 22),
+            icon: const Icon(
+              Icons.more_horiz_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
             onPressed: () {},
           ),
         ),
@@ -148,12 +155,15 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
                       child: CircleAvatar(
                         radius: 56,
                         backgroundColor: AppColors.scaffoldDark,
-                        backgroundImage: widget.alumni.photoUrl != null &&
+                        backgroundImage:
+                            widget.alumni.photoUrl != null &&
                                 widget.alumni.photoUrl!.isNotEmpty
                             ? CachedNetworkImageProvider(
-                                widget.alumni.photoUrl!)
+                                widget.alumni.photoUrl!,
+                              )
                             : null,
-                        child: widget.alumni.photoUrl == null ||
+                        child:
+                            widget.alumni.photoUrl == null ||
                                 widget.alumni.photoUrl!.isEmpty
                             ? Text(
                                 widget.alumni.initials,
@@ -194,8 +204,11 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
               ),
               if (widget.alumni.isVerified) ...[
                 const SizedBox(width: 8),
-                const Icon(Icons.verified_rounded,
-                    color: AppColors.burgundyAccent, size: 22),
+                const Icon(
+                  Icons.verified_rounded,
+                  color: AppColors.burgundyAccent,
+                  size: 22,
+                ),
               ],
             ],
           ),
@@ -226,19 +239,10 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildStat(widget.alumni.graduationYear ?? '—', 'Batch'),
-              Container(
-                width: 1,
-                height: 30,
-                color: AppColors.borderDark,
-              ),
+              Container(width: 1, height: 30, color: AppColors.borderDark),
               _buildStat(widget.alumni.department ?? '—', 'Dept'),
-              Container(
-                width: 1,
-                height: 30,
-                color: AppColors.borderDark,
-              ),
-              _buildStat(
-                  widget.alumni.location ?? '—', 'Location'),
+              Container(width: 1, height: 30, color: AppColors.borderDark),
+              _buildStat(widget.alumni.location ?? '—', 'Location'),
             ],
           ),
         ],
@@ -260,10 +264,7 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
         const SizedBox(height: 2),
         Text(
           label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: AppColors.textMuted,
-          ),
+          style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
         ),
       ],
     );
@@ -278,28 +279,49 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             child: Container(
               height: 42,
               decoration: BoxDecoration(
-                gradient: AppColors.burgundyGradient,
+                gradient: _isFollowing ? null : AppColors.burgundyGradient,
+                color: _isFollowing ? AppColors.elevatedDark : null,
                 borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.burgundy.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                border: _isFollowing
+                    ? Border.all(color: AppColors.borderDark)
+                    : null,
+                boxShadow: _isFollowing
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: AppColors.burgundy.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
               ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(10),
-                  onTap: () {},
+                  onTap: () {
+                    setState(() => _isFollowing = !_isFollowing);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          _isFollowing
+                              ? 'Following ${widget.alumni.name}'
+                              : 'Unfollowed ${widget.alumni.name}',
+                        ),
+                        duration: const Duration(seconds: 1),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
                   child: Center(
                     child: Text(
-                      'Connect',
+                      _isFollowing ? 'Following' : 'Connect',
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: _isFollowing
+                            ? AppColors.textPrimary
+                            : Colors.white,
                       ),
                     ),
                   ),
@@ -319,7 +341,14 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(10),
-                  onTap: () {},
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Messaging is coming soon!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
                   child: Center(
                     child: Text(
                       'Message',
@@ -335,15 +364,28 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             ),
           ),
           const SizedBox(width: 12),
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.borderDark),
+          GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Profile link copied to clipboard!'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.borderDark),
+              ),
+              child: const Icon(
+                Icons.share_rounded,
+                color: AppColors.textSecondary,
+                size: 18,
+              ),
             ),
-            child: const Icon(Icons.share_rounded,
-                color: AppColors.textSecondary, size: 18),
           ),
         ],
       ),
@@ -375,26 +417,47 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             child: Column(
               children: [
                 if (widget.alumni.email.isNotEmpty)
-                  _buildInfoRow(Icons.email_outlined, 'Email',
-                      widget.alumni.email),
+                  _buildInfoRow(
+                    Icons.email_outlined,
+                    'Email',
+                    widget.alumni.email,
+                  ),
                 if (widget.alumni.phone != null)
-                  _buildInfoRow(Icons.phone_outlined, 'Phone',
-                      widget.alumni.phone!),
+                  _buildInfoRow(
+                    Icons.phone_outlined,
+                    'Phone',
+                    widget.alumni.phone!,
+                  ),
                 if (widget.alumni.degree != null)
-                  _buildInfoRow(Icons.school_outlined, 'Degree',
-                      widget.alumni.degree!),
+                  _buildInfoRow(
+                    Icons.school_outlined,
+                    'Degree',
+                    widget.alumni.degree!,
+                  ),
                 if (widget.alumni.department != null)
-                  _buildInfoRow(Icons.business_outlined, 'Department',
-                      widget.alumni.department!),
+                  _buildInfoRow(
+                    Icons.business_outlined,
+                    'Department',
+                    widget.alumni.department!,
+                  ),
                 if (widget.alumni.currentCompany != null)
-                  _buildInfoRow(Icons.work_outline_rounded, 'Company',
-                      widget.alumni.currentCompany!),
+                  _buildInfoRow(
+                    Icons.work_outline_rounded,
+                    'Company',
+                    widget.alumni.currentCompany!,
+                  ),
                 if (widget.alumni.currentPosition != null)
-                  _buildInfoRow(Icons.badge_outlined, 'Position',
-                      widget.alumni.currentPosition!),
+                  _buildInfoRow(
+                    Icons.badge_outlined,
+                    'Position',
+                    widget.alumni.currentPosition!,
+                  ),
                 if (widget.alumni.location != null)
-                  _buildInfoRow(Icons.location_on_outlined, 'Location',
-                      widget.alumni.location!),
+                  _buildInfoRow(
+                    Icons.location_on_outlined,
+                    'Location',
+                    widget.alumni.location!,
+                  ),
               ],
             ),
           ),
@@ -467,8 +530,10 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             runSpacing: 8,
             children: widget.alumni.skills.map((skill) {
               return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -556,8 +621,7 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color:
-                          (link['color'] as Color).withOpacity(0.1),
+                      color: (link['color'] as Color).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -591,8 +655,11 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
                       ],
                     ),
                   ),
-                  Icon(Icons.open_in_new_rounded,
-                      size: 16, color: AppColors.textMuted),
+                  Icon(
+                    Icons.open_in_new_rounded,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
                 ],
               ),
             );
