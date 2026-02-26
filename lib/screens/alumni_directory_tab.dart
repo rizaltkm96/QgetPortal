@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../models/alumni_model.dart';
 import '../services/firebase_service.dart';
 import '../widgets/shimmer_loading.dart';
+import '../widgets/member_avatar.dart';
 import 'alumni_profile_screen.dart';
 
 class AlumniDirectoryTab extends StatefulWidget {
@@ -89,8 +89,8 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
                     onSelected: (value) => setState(() => _sortBy = value),
                     itemBuilder: (context) => [
                       _buildSortItem('name', 'Name', Icons.sort_by_alpha_rounded),
-                      _buildSortItem('year', 'Graduation Year', Icons.calendar_today_rounded),
-                      _buildSortItem('department', 'Department', Icons.school_rounded),
+                      _buildSortItem('year', 'Year', Icons.calendar_today_rounded),
+                      _buildSortItem('department', 'Branch', Icons.school_rounded),
                     ],
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -232,8 +232,7 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
           ),
           child: Row(
             children: [
-              // Avatar
-              _buildAvatar(alumni, 52),
+              MemberAvatar(alumni: alumni, size: 52),
               const SizedBox(width: 14),
               // Info
               Expanded(
@@ -254,14 +253,6 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
                             ),
                           ),
                         ),
-                        if (alumni.isVerified) ...[
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.verified_rounded,
-                            color: AppColors.burgundyAccent,
-                            size: 16,
-                          ),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -274,23 +265,6 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
                         color: AppColors.textMuted,
                       ),
                     ),
-                    if (alumni.location != null) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on_outlined,
-                              size: 14, color: AppColors.textMuted),
-                          const SizedBox(width: 4),
-                          Text(
-                            alumni.location!,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -348,7 +322,7 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
         child: Column(
           children: [
             const SizedBox(height: 20),
-            _buildAvatar(alumni, 72),
+            MemberAvatar(alumni: alumni, size: 72),
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -370,16 +344,11 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
                           ),
                         ),
                       ),
-                      if (alumni.isVerified) ...[
-                        const SizedBox(width: 4),
-                        const Icon(Icons.verified_rounded,
-                            color: AppColors.burgundyAccent, size: 14),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    alumni.department ?? '',
+                    alumni.branchName ?? '',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
@@ -388,7 +357,7 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
                     ),
                   ),
                   const SizedBox(height: 4),
-                  if (alumni.graduationYear != null)
+                  if (alumni.year != null && alumni.year!.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 3),
@@ -397,7 +366,7 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        "Class of ${alumni.graduationYear}",
+                        alumni.year!,
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: AppColors.burgundyAccent,
@@ -409,37 +378,6 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatar(AlumniModel alumni, double size) {
-    return Container(
-      width: size + 4,
-      height: size + 4,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: AppColors.storyRingGradient,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(2),
-        child: CircleAvatar(
-          radius: size / 2,
-          backgroundColor: AppColors.cardDark,
-          backgroundImage: alumni.photoUrl != null && alumni.photoUrl!.isNotEmpty
-              ? CachedNetworkImageProvider(alumni.photoUrl!)
-              : null,
-          child: alumni.photoUrl == null || alumni.photoUrl!.isEmpty
-              ? Text(
-                  alumni.initials,
-                  style: GoogleFonts.outfit(
-                    fontSize: size * 0.35,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.burgundyAccent,
-                  ),
-                )
-              : null,
         ),
       ),
     );

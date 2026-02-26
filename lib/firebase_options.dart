@@ -33,28 +33,30 @@ class DefaultFirebaseOptions {
   // ╚════════════════════════════════════════════════════════════════════╝
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR-API-KEY',
-    appId: 'YOUR-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'YOUR-PROJECT-ID',
-    authDomain: 'YOUR-PROJECT-ID.firebaseapp.com',
-    storageBucket: 'YOUR-PROJECT-ID.appspot.com',
+    apiKey: 'AIzaSyDpgD9ACznei-P8R9PcV0Uh0KQNT2HgK2g',
+    appId: '1:624498763954:web:7936a8a1a74d70d82201ab',
+    messagingSenderId: '624498763954',
+    projectId: 'qget-db',
+    authDomain: 'qget-db.firebaseapp.com',
+    storageBucket: 'qget-db.firebasestorage.app',
+    measurementId: 'G-NMD2W5EHVJ',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR-API-KEY',
-    appId: 'YOUR-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'YOUR-PROJECT-ID',
-    storageBucket: 'YOUR-PROJECT-ID.appspot.com',
+    apiKey: 'AIzaSyDLf5bb_PmCfU09lqgJnm_Pt0fRX3J7MRc',
+    appId: '1:624498763954:android:43145638029927f12201ab',
+    messagingSenderId: '624498763954',
+    projectId: 'qget-db',
+    storageBucket: 'qget-db.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR-API-KEY',
-    appId: 'YOUR-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'YOUR-PROJECT-ID',
-    storageBucket: 'YOUR-PROJECT-ID.appspot.com',
+    apiKey: 'AIzaSyCChlaCs216DTzxTWytFdXlRy92_nCu7BI',
+    appId: '1:624498763954:ios:831e44969e4840ab2201ab',
+    messagingSenderId: '624498763954',
+    projectId: 'qget-db',
+    storageBucket: 'qget-db.firebasestorage.app',
     iosBundleId: 'com.qget.qgetPortal',
   );
+
 }

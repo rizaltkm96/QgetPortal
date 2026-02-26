@@ -4,7 +4,6 @@ import '../theme/app_theme.dart';
 import '../models/post_model.dart';
 import '../models/alumni_model.dart';
 import '../services/firebase_service.dart';
-import '../services/dev_mode_service.dart';
 import '../widgets/post_card.dart';
 import '../widgets/story_circle.dart';
 import '../widgets/shimmer_loading.dart';
@@ -89,72 +88,8 @@ class _FeedTabState extends State<FeedTab> with AutomaticKeepAliveClientMixin {
           icon: const Icon(Icons.chat_bubble_outline_rounded, size: 24),
           onPressed: () {},
         ),
-        _buildDevModeToggle(),
         const SizedBox(width: 4),
       ],
-    );
-  }
-
-  Widget _buildDevModeToggle() {
-    return ValueListenableBuilder<bool>(
-      valueListenable: DevModeService().isDevMode,
-      builder: (context, isDev, _) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-          child: InkWell(
-            onTap: () => DevModeService().toggleDevMode(context),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: isDev
-                    ? AppColors.burgundyAccent.withOpacity(0.2)
-                    : AppColors.elevatedDark,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isDev
-                      ? AppColors.burgundyAccent
-                      : AppColors.borderDark,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    'Dev Mode',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isDev
-                          ? AppColors.burgundyAccent
-                          : AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 32,
-                    height: 18,
-                    child: Transform.scale(
-                      scale: 0.6,
-                      child: Switch(
-                        value: isDev,
-                        onChanged: (val) =>
-                            DevModeService().toggleDevMode(context),
-                        activeColor: AppColors.burgundyAccent,
-                        activeTrackColor: AppColors.burgundyAccent.withOpacity(
-                          0.3,
-                        ),
-                        inactiveThumbColor: AppColors.textMuted,
-                        inactiveTrackColor: AppColors.cardDark,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 

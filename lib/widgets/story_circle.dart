@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../models/alumni_model.dart';
+import '../widgets/member_avatar.dart';
 import '../screens/alumni_profile_screen.dart';
 
 class StoryCircle extends StatelessWidget {
@@ -26,46 +26,7 @@ class StoryCircle extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Story ring
-            Container(
-              width: 68,
-              height: 68,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppColors.storyRingGradient,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(2.5),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.scaffoldDark,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(2),
-                    child: CircleAvatar(
-                      radius: 29,
-                      backgroundColor: AppColors.elevatedDark,
-                      backgroundImage:
-                          alumni.photoUrl != null && alumni.photoUrl!.isNotEmpty
-                              ? CachedNetworkImageProvider(alumni.photoUrl!)
-                              : null,
-                      child:
-                          alumni.photoUrl == null || alumni.photoUrl!.isEmpty
-                              ? Text(
-                                  alumni.initials,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.burgundyAccent,
-                                  ),
-                                )
-                              : null,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            MemberAvatar(alumni: alumni, size: 60),
             const SizedBox(height: 6),
             SizedBox(
               width: 68,

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "624498763954",
+    "project_id": "qget-db",
+    "storage_bucket": "qget-db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:624498763954:android:43145638029927f12201ab",
+        "android_client_info": {
+          "package_name": "com.qget.qget_portal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLf5bb_PmCfU09lqgJnm_Pt0fRX3J7MRc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

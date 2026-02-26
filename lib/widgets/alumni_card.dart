@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../models/alumni_model.dart';
+import '../widgets/member_avatar.dart';
 import '../screens/alumni_profile_screen.dart';
 
 class AlumniCard extends StatelessWidget {
@@ -31,38 +31,9 @@ class AlumniCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Avatar
             Hero(
               tag: 'avatar_${alumni.uid}',
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppColors.storyRingGradient,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(2),
-                  child: CircleAvatar(
-                    radius: 25,
-                    backgroundColor: AppColors.elevatedDark,
-                    backgroundImage: alumni.photoUrl != null &&
-                            alumni.photoUrl!.isNotEmpty
-                        ? CachedNetworkImageProvider(alumni.photoUrl!)
-                        : null,
-                    child: alumni.photoUrl == null || alumni.photoUrl!.isEmpty
-                        ? Text(
-                            alumni.initials,
-                            style: GoogleFonts.outfit(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.burgundyAccent,
-                            ),
-                          )
-                        : null,
-                  ),
-                ),
-              ),
+              child: MemberAvatar(alumni: alumni, size: 48),
             ),
             const SizedBox(width: 14),
             // Info
@@ -84,14 +55,6 @@ class AlumniCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (alumni.isVerified) ...[
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.verified_rounded,
-                          color: AppColors.burgundyAccent,
-                          size: 16,
-                        ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 2),

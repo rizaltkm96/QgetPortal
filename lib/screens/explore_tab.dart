@@ -20,18 +20,25 @@ class _ExploreTabState extends State<ExploreTab>
   List<AlumniModel> _searchResults = [];
   bool _isSearching = false;
   String _selectedFilter = 'All';
-  final List<String> _filters = [
-    'All',
-    'Computer Science',
-    'Engineering',
-    'Business',
-    'Arts',
-    'Science',
-    'Medicine',
-  ];
+  List<String> _filters = ['All'];
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDepartments();
+  }
+
+  Future<void> _loadDepartments() async {
+    final depts = await FirebaseService.getDepartments();
+    if (mounted) {
+      setState(() {
+        _filters = ['All', ...depts];
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -250,7 +257,7 @@ class _ExploreTabState extends State<ExploreTab>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Photo
+          // Photo from ImgURL (alumni.photoUrl)
           if (alumni.photoUrl != null && alumni.photoUrl!.isNotEmpty)
             CachedNetworkImage(
               imageUrl: alumni.photoUrl!,

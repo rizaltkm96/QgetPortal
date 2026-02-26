@@ -7,25 +7,29 @@ class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // ─── Alumni Collection ──────────────────────────────
+  // ─── Users Collection (real Firestore data) ──────────
+  // Maps to AlumniModel for display across Feed, Directory, Explore, Profile.
 
   static Stream<List<AlumniModel>> getAlumniStream() {
     return _firestore
-        .collection('alumni')
-        .orderBy('name')
+        .collection('users')
+        .orderBy('Member_Name')
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => AlumniModel.fromFirestore(doc)).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => AlumniModel.fromFirestore(doc))
+            .toList());
   }
 
   static Future<List<AlumniModel>> getAlumniList() async {
     final snapshot =
-        await _firestore.collection('alumni').orderBy('name').get();
-    return snapshot.docs.map((doc) => AlumniModel.fromFirestore(doc)).toList();
+        await _firestore.collection('users').orderBy('Member_Name').get();
+    return snapshot.docs
+        .map((doc) => AlumniModel.fromFirestore(doc))
+        .toList();
   }
 
   static Future<AlumniModel?> getAlumniById(String uid) async {
-    final doc = await _firestore.collection('alumni').doc(uid).get();
+    final doc = await _firestore.collection('users').doc(uid).get();
     if (doc.exists) {
       return AlumniModel.fromFirestore(doc);
     }
@@ -34,48 +38,40 @@ class FirebaseService {
 
   static Future<List<AlumniModel>> searchAlumni(String query) async {
     final snapshot =
-        await _firestore.collection('alumni').orderBy('name').get();
-    final alumni =
-        snapshot.docs.map((doc) => AlumniModel.fromFirestore(doc)).toList();
+        await _firestore.collection('users').orderBy('Member_Name').get();
+    final alumni = snapshot.docs
+        .map((doc) => AlumniModel.fromFirestore(doc))
+        .toList();
     final lowerQuery = query.toLowerCase();
     return alumni.where((a) {
       return a.name.toLowerCase().contains(lowerQuery) ||
-          (a.department?.toLowerCase().contains(lowerQuery) ?? false) ||
-          (a.graduationYear?.contains(lowerQuery) ?? false) ||
-          (a.currentCompany?.toLowerCase().contains(lowerQuery) ?? false) ||
-          (a.location?.toLowerCase().contains(lowerQuery) ?? false);
+          (a.branchName?.toLowerCase().contains(lowerQuery) ?? false) ||
+          (a.year?.contains(lowerQuery) ?? false) ||
+          (a.companyName?.toLowerCase().contains(lowerQuery) ?? false);
     }).toList();
   }
 
   static Future<List<AlumniModel>> getAlumniByDepartment(
       String department) async {
     final snapshot = await _firestore
-        .collection('alumni')
-        .where('department', isEqualTo: department)
-        .orderBy('name')
+        .collection('users')
+        .where('Branch_Name', isEqualTo: department)
+        .orderBy('Member_Name')
         .get();
-    return snapshot.docs.map((doc) => AlumniModel.fromFirestore(doc)).toList();
+    return snapshot.docs
+        .map((doc) => AlumniModel.fromFirestore(doc))
+        .toList();
   }
 
   static Future<List<AlumniModel>> getAlumniByYear(String year) async {
     final snapshot = await _firestore
-        .collection('alumni')
-        .where('graduationYear', isEqualTo: year)
-        .orderBy('name')
+        .collection('users')
+        .where('Year', isEqualTo: year)
+        .orderBy('Member_Name')
         .get();
-    return snapshot.docs.map((doc) => AlumniModel.fromFirestore(doc)).toList();
-  }
-
-  static Future<void> addAlumni(AlumniModel alumni) async {
-    await _firestore
-        .collection('alumni')
-        .doc(alumni.uid)
-        .set(alumni.toFirestore());
-  }
-
-  static Future<void> updateAlumni(
-      String uid, Map<String, dynamic> data) async {
-    await _firestore.collection('alumni').doc(uid).update(data);
+    return snapshot.docs
+        .map((doc) => AlumniModel.fromFirestore(doc))
+        .toList();
   }
 
   // ─── Posts Collection ───────────────────────────────
@@ -130,22 +126,22 @@ class FirebaseService {
   // ─── Stats ──────────────────────────────────────────
 
   static Future<Map<String, int>> getStats() async {
-    final alumniCount =
-        await _firestore.collection('alumni').count().get();
+    final usersCount =
+        await _firestore.collection('users').count().get();
     final postsCount =
         await _firestore.collection('posts').count().get();
     return {
-      'alumni': alumniCount.count ?? 0,
+      'alumni': usersCount.count ?? 0,
       'posts': postsCount.count ?? 0,
     };
   }
 
-  // ─── Departments ────────────────────────────────────
+  // ─── Departments (Branch_Name from users) ────────────
 
   static Future<List<String>> getDepartments() async {
-    final snapshot = await _firestore.collection('alumni').get();
+    final snapshot = await _firestore.collection('users').get();
     final departments = snapshot.docs
-        .map((doc) => doc.data()['department'] as String?)
+        .map((doc) => doc.data()['Branch_Name'] as String?)
         .where((d) => d != null && d.isNotEmpty)
         .cast<String>()
         .toSet()

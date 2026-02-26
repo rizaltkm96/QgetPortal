@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../models/alumni_model.dart';
+import '../widgets/member_avatar.dart';
 
 class AlumniProfileScreen extends StatefulWidget {
   final AlumniModel alumni;
@@ -39,8 +39,7 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
           SliverToBoxAdapter(child: _buildProfileInfo()),
           SliverToBoxAdapter(child: _buildActionButtons()),
           SliverToBoxAdapter(child: _buildInfoSection()),
-          if (widget.alumni.skills.isNotEmpty)
-            SliverToBoxAdapter(child: _buildSkillsSection()),
+          if (_hasChildren) SliverToBoxAdapter(child: _buildChildrenSection()),
           SliverToBoxAdapter(child: _buildSocialLinks()),
         ],
       ),
@@ -130,11 +129,8 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
                 child: Hero(
                   tag: 'avatar_${widget.alumni.uid}',
                   child: Container(
-                    width: 118,
-                    height: 118,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: AppColors.storyRingGradient,
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.burgundy.withOpacity(0.4),
@@ -143,29 +139,7 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
                         ),
                       ],
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(3),
-                      child: CircleAvatar(
-                        radius: 56,
-                        backgroundColor: AppColors.scaffoldDark,
-                        backgroundImage: widget.alumni.photoUrl != null &&
-                                widget.alumni.photoUrl!.isNotEmpty
-                            ? CachedNetworkImageProvider(
-                                widget.alumni.photoUrl!)
-                            : null,
-                        child: widget.alumni.photoUrl == null ||
-                                widget.alumni.photoUrl!.isEmpty
-                            ? Text(
-                                widget.alumni.initials,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 38,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.burgundyAccent,
-                                ),
-                              )
-                            : null,
-                      ),
-                    ),
+                    child: MemberAvatar(alumni: widget.alumni, size: 110),
                   ),
                 ),
               ),
@@ -181,23 +155,14 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                widget.alumni.name,
-                style: GoogleFonts.outfit(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if (widget.alumni.isVerified) ...[
-                const SizedBox(width: 8),
-                const Icon(Icons.verified_rounded,
-                    color: AppColors.burgundyAccent, size: 22),
-              ],
-            ],
+          Text(
+            widget.alumni.name,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -208,37 +173,23 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
               color: AppColors.textSecondary,
             ),
           ),
-          if (widget.alumni.bio != null && widget.alumni.bio!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              widget.alumni.bio!,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.5,
-              ),
-            ),
-          ],
           const SizedBox(height: 16),
-          // Stats row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildStat(widget.alumni.graduationYear ?? '—', 'Batch'),
+              _buildStat(widget.alumni.year ?? '—', 'Year'),
               Container(
                 width: 1,
                 height: 30,
                 color: AppColors.borderDark,
               ),
-              _buildStat(widget.alumni.department ?? '—', 'Dept'),
+              _buildStat(widget.alumni.branchName ?? '—', 'Branch'),
               Container(
                 width: 1,
                 height: 30,
                 color: AppColors.borderDark,
               ),
-              _buildStat(
-                  widget.alumni.location ?? '—', 'Location'),
+              _buildStat(widget.alumni.companyName ?? '—', 'Company'),
             ],
           ),
         ],
@@ -377,24 +328,34 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
                 if (widget.alumni.email.isNotEmpty)
                   _buildInfoRow(Icons.email_outlined, 'Email',
                       widget.alumni.email),
-                if (widget.alumni.phone != null)
-                  _buildInfoRow(Icons.phone_outlined, 'Phone',
-                      widget.alumni.phone!),
-                if (widget.alumni.degree != null)
-                  _buildInfoRow(Icons.school_outlined, 'Degree',
-                      widget.alumni.degree!),
-                if (widget.alumni.department != null)
-                  _buildInfoRow(Icons.business_outlined, 'Department',
-                      widget.alumni.department!),
-                if (widget.alumni.currentCompany != null)
+                if (widget.alumni.contactNumber != null &&
+                    widget.alumni.contactNumber!.isNotEmpty)
+                  _buildInfoRow(Icons.phone_outlined, 'Contact',
+                      widget.alumni.contactNumber!),
+                if (widget.alumni.whatsappNumber != null &&
+                    widget.alumni.whatsappNumber!.isNotEmpty)
+                  _buildInfoRow(Icons.chat_rounded, 'WhatsApp',
+                      widget.alumni.whatsappNumber!),
+                if (widget.alumni.bloodGroup != null &&
+                    widget.alumni.bloodGroup!.isNotEmpty)
+                  _buildInfoRow(Icons.bloodtype_outlined, 'Blood Group',
+                      widget.alumni.bloodGroup!),
+                if (widget.alumni.spouseName != null &&
+                    widget.alumni.spouseName!.isNotEmpty)
+                  _buildInfoRow(Icons.favorite_outline_rounded, 'Spouse',
+                      widget.alumni.spouseName!),
+                if (widget.alumni.branchName != null &&
+                    widget.alumni.branchName!.isNotEmpty)
+                  _buildInfoRow(Icons.business_outlined, 'Branch',
+                      widget.alumni.branchName!),
+                if (widget.alumni.companyName != null &&
+                    widget.alumni.companyName!.isNotEmpty)
                   _buildInfoRow(Icons.work_outline_rounded, 'Company',
-                      widget.alumni.currentCompany!),
-                if (widget.alumni.currentPosition != null)
+                      widget.alumni.companyName!),
+                if (widget.alumni.position != null &&
+                    widget.alumni.position!.isNotEmpty)
                   _buildInfoRow(Icons.badge_outlined, 'Position',
-                      widget.alumni.currentPosition!),
-                if (widget.alumni.location != null)
-                  _buildInfoRow(Icons.location_on_outlined, 'Location',
-                      widget.alumni.location!),
+                      widget.alumni.position!),
               ],
             ),
           ),
@@ -447,14 +408,34 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
     );
   }
 
-  Widget _buildSkillsSection() {
+  bool get _hasChildren {
+    return (widget.alumni.child1Name != null && widget.alumni.child1Name!.isNotEmpty) ||
+        (widget.alumni.child2Name != null && widget.alumni.child2Name!.isNotEmpty) ||
+        (widget.alumni.child3Name != null && widget.alumni.child3Name!.isNotEmpty) ||
+        (widget.alumni.child4Name != null && widget.alumni.child4Name!.isNotEmpty);
+  }
+
+  Widget _buildChildrenSection() {
+    final children = <MapEntry<String, String?>>[];
+    if (widget.alumni.child1Name != null && widget.alumni.child1Name!.isNotEmpty) {
+      children.add(MapEntry(widget.alumni.child1Name!, widget.alumni.child1Dob));
+    }
+    if (widget.alumni.child2Name != null && widget.alumni.child2Name!.isNotEmpty) {
+      children.add(MapEntry(widget.alumni.child2Name!, widget.alumni.child2Dob));
+    }
+    if (widget.alumni.child3Name != null && widget.alumni.child3Name!.isNotEmpty) {
+      children.add(MapEntry(widget.alumni.child3Name!, widget.alumni.child3Dob));
+    }
+    if (widget.alumni.child4Name != null && widget.alumni.child4Name!.isNotEmpty) {
+      children.add(MapEntry(widget.alumni.child4Name!, widget.alumni.child4Dob));
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Skills',
+            'Children',
             style: GoogleFonts.outfit(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -462,36 +443,45 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: widget.alumni.skills.map((skill) {
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.burgundy.withOpacity(0.2),
-                      AppColors.burgundyDark.withOpacity(0.1),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.borderDark, width: 0.5),
+            ),
+            child: Column(
+              children: children.map((e) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Icon(Icons.child_care_rounded,
+                          size: 20, color: AppColors.burgundyAccent),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          e.key,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      if (e.value != null && e.value!.isNotEmpty)
+                        Text(
+                          e.value!,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.burgundy.withOpacity(0.3),
-                    width: 0.5,
-                  ),
-                ),
-                child: Text(
-                  skill,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.burgundyAccent,
-                  ),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
+            ),
           ),
         ],
       ),
@@ -499,41 +489,18 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
   }
 
   Widget _buildSocialLinks() {
-    final links = <Map<String, dynamic>>[];
-    if (widget.alumni.linkedIn != null) {
-      links.add({
-        'icon': Icons.link_rounded,
-        'label': 'LinkedIn',
-        'url': widget.alumni.linkedIn,
-        'color': const Color(0xFF0077B5),
-      });
+    if (widget.alumni.socialMediaLink == null ||
+        widget.alumni.socialMediaLink!.trim().isEmpty) {
+      return const SizedBox(height: 24);
     }
-    if (widget.alumni.instagram != null) {
-      links.add({
-        'icon': Icons.camera_alt_outlined,
-        'label': 'Instagram',
-        'url': widget.alumni.instagram,
-        'color': const Color(0xFFE1306C),
-      });
-    }
-    if (widget.alumni.github != null) {
-      links.add({
-        'icon': Icons.code_rounded,
-        'label': 'GitHub',
-        'url': widget.alumni.github,
-        'color': const Color(0xFFCCCCCC),
-      });
-    }
-
-    if (links.isEmpty) return const SizedBox(height: 24);
-
+    final url = widget.alumni.socialMediaLink!.trim();
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Social Links',
+            'Social',
             style: GoogleFonts.outfit(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -541,62 +508,46 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             ),
           ),
           const SizedBox(height: 12),
-          ...links.map((link) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.cardDark,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.borderDark, width: 0.5),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color:
-                          (link['color'] as Color).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      link['icon'] as IconData,
-                      size: 18,
-                      color: link['color'] as Color,
-                    ),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.borderDark, width: 0.5),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.burgundy.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          link['label'] as String,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          link['url'] as String,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
+                  child: const Icon(
+                    Icons.link_rounded,
+                    size: 18,
+                    color: AppColors.burgundyAccent,
                   ),
-                  Icon(Icons.open_in_new_rounded,
-                      size: 16, color: AppColors.textMuted),
-                ],
-              ),
-            );
-          }),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    url,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(Icons.open_in_new_rounded,
+                    size: 16, color: AppColors.textMuted),
+              ],
+            ),
+          ),
         ],
       ),
     );
