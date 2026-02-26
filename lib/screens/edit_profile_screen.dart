@@ -16,43 +16,29 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _bioController;
   late TextEditingController _yearController;
   late TextEditingController _deptController;
   late TextEditingController _companyController;
   late TextEditingController _positionController;
-  late TextEditingController _skillsController;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.alumni?.name);
-    _bioController = TextEditingController(text: widget.alumni?.bio);
-    _yearController = TextEditingController(
-      text: widget.alumni?.graduationYear,
-    );
-    _deptController = TextEditingController(text: widget.alumni?.department);
-    _companyController = TextEditingController(
-      text: widget.alumni?.currentCompany,
-    );
-    _positionController = TextEditingController(
-      text: widget.alumni?.currentPosition,
-    );
-    _skillsController = TextEditingController(
-      text: widget.alumni?.skills.join(', '),
-    );
+    _yearController = TextEditingController(text: widget.alumni?.year);
+    _deptController = TextEditingController(text: widget.alumni?.branchName);
+    _companyController = TextEditingController(text: widget.alumni?.companyName);
+    _positionController = TextEditingController(text: widget.alumni?.position);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _bioController.dispose();
     _yearController.dispose();
     _deptController.dispose();
     _companyController.dispose();
     _positionController.dispose();
-    _skillsController.dispose();
     super.dispose();
   }
 
@@ -62,45 +48,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = FirebaseService.currentUser;
     if (user == null) return;
 
+    if (widget.alumni == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Only existing members can edit profile.')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final skills = _skillsController.text
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toList();
-
-      final data = {
-        'name': _nameController.text.trim(),
-        'bio': _bioController.text.trim(),
-        'graduationYear': _yearController.text.trim(),
-        'department': _deptController.text.trim(),
-        'currentCompany': _companyController.text.trim(),
-        'currentPosition': _positionController.text.trim(),
-        'skills': skills,
-        'lastActive': DateTime.now(),
+      final data = <String, dynamic>{
+        'Member_Name': _nameController.text.trim(),
+        'Year': _yearController.text.trim(),
+        'Branch_Name': _deptController.text.trim(),
+        'Company_Name': _companyController.text.trim(),
+        'Position': _positionController.text.trim(),
       };
 
-      if (widget.alumni == null) {
-        // Create new alumni doc if it doesn't exist
-        final newAlumni = AlumniModel(
-          uid: user.uid,
-          name: _nameController.text.trim(),
-          email: user.email ?? '',
-          bio: _bioController.text.trim(),
-          graduationYear: _yearController.text.trim(),
-          department: _deptController.text.trim(),
-          currentCompany: _companyController.text.trim(),
-          currentPosition: _positionController.text.trim(),
-          skills: skills,
-          createdAt: DateTime.now(),
-          lastActive: DateTime.now(),
-        );
-        await FirebaseService.addAlumni(newAlumni);
-      } else {
-        await FirebaseService.updateAlumni(user.uid, data);
-      }
+      await FirebaseService.updateUserProfile(user.uid, data);
 
       if (mounted) {
         Navigator.pop(context);
@@ -110,9 +76,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating profile: $e')),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -152,13 +118,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Icons.person_outline_rounded,
             ),
             const SizedBox(height: 20),
-            _buildField(
-              'Bio',
-              _bioController,
-              Icons.info_outline_rounded,
-              maxLines: 3,
-            ),
-            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
@@ -189,12 +148,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               'Current Position',
               _positionController,
               Icons.badge_outlined,
-            ),
-            const SizedBox(height: 20),
-            _buildField(
-              'Skills (comma separated)',
-              _skillsController,
-              Icons.bolt_rounded,
             ),
             const SizedBox(height: 40),
             ElevatedButton(

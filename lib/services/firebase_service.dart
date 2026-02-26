@@ -36,6 +36,11 @@ class FirebaseService {
     return null;
   }
 
+  /// Update existing user profile in Firestore (users collection). [data] must use Firestore field names (e.g. Member_Name, Year, Branch_Name, Company_Name, Position).
+  static Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
+    await _firestore.collection('users').doc(uid).update(data);
+  }
+
   static Future<List<AlumniModel>> searchAlumni(String query) async {
     final snapshot =
         await _firestore.collection('users').orderBy('Member_Name').get();
