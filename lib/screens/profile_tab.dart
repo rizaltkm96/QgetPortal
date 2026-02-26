@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../services/firebase_service.dart';
+import 'edit_profile_screen.dart';
+import 'login_screen.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
@@ -63,8 +65,11 @@ class _ProfileTabState extends State<ProfileTab>
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppColors.borderDark),
                     ),
-                    child: const Icon(Icons.settings_outlined,
-                        color: AppColors.textSecondary, size: 22),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      color: AppColors.textSecondary,
+                      size: 22,
+                    ),
                   ),
                 ],
               ),
@@ -116,10 +121,7 @@ class _ProfileTabState extends State<ProfileTab>
           const SizedBox(height: 4),
           Text(
             user?.email ?? 'Sign in to access your profile',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: AppColors.textMuted,
-            ),
+            style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
           // Edit profile button
@@ -141,7 +143,23 @@ class _ProfileTabState extends State<ProfileTab>
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
-                onTap: () {},
+                onTap: () async {
+                  if (user == null) {
+                    // Navigate to Sign In (if we had a screen)
+                    return;
+                  }
+
+                  // Show loading or just navigate
+                  final alumni = await FirebaseService.getAlumniById(user.uid);
+                  if (mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EditProfileScreen(alumni: alumni),
+                      ),
+                    );
+                  }
+                },
                 child: Center(
                   child: Text(
                     user != null ? 'Edit Profile' : 'Sign In',
@@ -199,10 +217,7 @@ class _ProfileTabState extends State<ProfileTab>
         ),
         Text(
           label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: AppColors.textMuted,
-          ),
+          style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
         ),
       ],
     );
@@ -235,6 +250,22 @@ class _ProfileTabState extends State<ProfileTab>
                   Icons.person_outline_rounded,
                   'My Profile',
                   'View and edit your profile',
+                  onTap: () async {
+                    final user = FirebaseService.currentUser;
+                    if (user != null) {
+                      final alumni = await FirebaseService.getAlumniById(
+                        user.uid,
+                      );
+                      if (mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => EditProfileScreen(alumni: alumni),
+                          ),
+                        );
+                      }
+                    }
+                  },
                 ),
                 _menuDivider(),
                 _buildMenuItem(
@@ -268,7 +299,12 @@ class _ProfileTabState extends State<ProfileTab>
                   isDestructive: true,
                   onTap: () async {
                     await FirebaseService.signOut();
-                    if (mounted) setState(() {});
+                    if (mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (route) => false,
+                      );
+                    }
                   },
                 ),
               ],
@@ -280,15 +316,16 @@ class _ProfileTabState extends State<ProfileTab>
   }
 
   Widget _menuDivider() {
-    return const Divider(
-      height: 1,
-      indent: 60,
-      color: AppColors.borderDark,
-    );
+    return const Divider(height: 1, indent: 60, color: AppColors.borderDark);
   }
 
-  Widget _buildMenuItem(IconData icon, String title, String subtitle,
-      {bool isDestructive = false, VoidCallback? onTap}) {
+  Widget _buildMenuItem(
+    IconData icon,
+    String title,
+    String subtitle, {
+    bool isDestructive = false,
+    VoidCallback? onTap,
+  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -381,10 +418,7 @@ class _ProfileTabState extends State<ProfileTab>
           ),
           Text(
             'v1.0.0',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: AppColors.textMuted,
-            ),
+            style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
           ),
         ],
       ),

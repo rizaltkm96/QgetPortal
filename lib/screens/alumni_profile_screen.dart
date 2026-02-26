@@ -16,6 +16,7 @@ class AlumniProfileScreen extends StatefulWidget {
 class _AlumniProfileScreenState extends State<AlumniProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isFollowing = false;
 
   @override
   void initState() {
@@ -59,8 +60,11 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             color: Colors.black.withOpacity(0.4),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 20),
+          child: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
         ),
       ),
       actions: [
@@ -71,8 +75,11 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             borderRadius: BorderRadius.circular(12),
           ),
           child: IconButton(
-            icon: const Icon(Icons.more_horiz_rounded,
-                color: Colors.white, size: 22),
+            icon: const Icon(
+              Icons.more_horiz_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
             onPressed: () {},
           ),
         ),
@@ -211,10 +218,7 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
         const SizedBox(height: 2),
         Text(
           label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: AppColors.textMuted,
-          ),
+          style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
         ),
       ],
     );
@@ -229,28 +233,49 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             child: Container(
               height: 42,
               decoration: BoxDecoration(
-                gradient: AppColors.burgundyGradient,
+                gradient: _isFollowing ? null : AppColors.burgundyGradient,
+                color: _isFollowing ? AppColors.elevatedDark : null,
                 borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.burgundy.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                border: _isFollowing
+                    ? Border.all(color: AppColors.borderDark)
+                    : null,
+                boxShadow: _isFollowing
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: AppColors.burgundy.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
               ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(10),
-                  onTap: () {},
+                  onTap: () {
+                    setState(() => _isFollowing = !_isFollowing);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          _isFollowing
+                              ? 'Following ${widget.alumni.name}'
+                              : 'Unfollowed ${widget.alumni.name}',
+                        ),
+                        duration: const Duration(seconds: 1),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
                   child: Center(
                     child: Text(
-                      'Connect',
+                      _isFollowing ? 'Following' : 'Connect',
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: _isFollowing
+                            ? AppColors.textPrimary
+                            : Colors.white,
                       ),
                     ),
                   ),
@@ -270,7 +295,14 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(10),
-                  onTap: () {},
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Messaging is coming soon!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
                   child: Center(
                     child: Text(
                       'Message',
@@ -286,15 +318,28 @@ class _AlumniProfileScreenState extends State<AlumniProfileScreen>
             ),
           ),
           const SizedBox(width: 12),
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.borderDark),
+          GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Profile link copied to clipboard!'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.borderDark),
+              ),
+              child: const Icon(
+                Icons.share_rounded,
+                color: AppColors.textSecondary,
+                size: 18,
+              ),
             ),
-            child: const Icon(Icons.share_rounded,
-                color: AppColors.textSecondary, size: 18),
           ),
         ],
       ),

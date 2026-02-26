@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../models/post_model.dart';
+import '../services/firebase_service.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
@@ -22,6 +23,10 @@ class _PostCardState extends State<PostCard>
   @override
   void initState() {
     super.initState();
+    final currentUser = FirebaseService.currentUser;
+    _isLiked =
+        currentUser != null && widget.post.likes.contains(currentUser.uid);
+
     _heartController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -40,8 +45,21 @@ class _PostCardState extends State<PostCard>
   }
 
   void _onDoubleTap() {
-    setState(() => _isLiked = true);
+    if (!_isLiked) {
+      _toggleLike();
+    }
     _heartController.forward(from: 0);
+  }
+
+  void _toggleLike() {
+    final currentUser = FirebaseService.currentUser;
+    if (currentUser == null) return;
+
+    setState(() {
+      _isLiked = !_isLiked;
+    });
+
+    FirebaseService.toggleLike(widget.post.id, currentUser.uid);
   }
 
   @override
@@ -122,8 +140,11 @@ class _PostCardState extends State<PostCard>
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(Icons.verified_rounded,
-                        size: 14, color: AppColors.burgundyAccent),
+                    const Icon(
+                      Icons.verified_rounded,
+                      size: 14,
+                      color: AppColors.burgundyAccent,
+                    ),
                   ],
                 ),
                 if (widget.post.authorDepartment != null)
@@ -137,8 +158,11 @@ class _PostCardState extends State<PostCard>
               ],
             ),
           ),
-          const Icon(Icons.more_horiz_rounded,
-              color: AppColors.textSecondary, size: 22),
+          const Icon(
+            Icons.more_horiz_rounded,
+            color: AppColors.textSecondary,
+            size: 22,
+          ),
         ],
       ),
     );
@@ -168,8 +192,11 @@ class _PostCardState extends State<PostCard>
             errorWidget: (_, __, ___) => Container(
               height: 380,
               color: AppColors.elevatedDark,
-              child: const Icon(Icons.broken_image_rounded,
-                  color: AppColors.textMuted, size: 40),
+              child: const Icon(
+                Icons.broken_image_rounded,
+                color: AppColors.textMuted,
+                size: 40,
+              ),
             ),
           ),
           // Double tap heart animation
@@ -197,7 +224,7 @@ class _PostCardState extends State<PostCard>
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => setState(() => _isLiked = !_isLiked),
+            onTap: _toggleLike,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               transitionBuilder: (child, animation) =>
@@ -207,28 +234,45 @@ class _PostCardState extends State<PostCard>
                     ? Icons.favorite_rounded
                     : Icons.favorite_border_rounded,
                 key: ValueKey(_isLiked),
-                color: _isLiked ? AppColors.burgundyAccent : AppColors.textPrimary,
+                color: _isLiked
+                    ? AppColors.burgundyAccent
+                    : AppColors.textPrimary,
                 size: 26,
               ),
             ),
           ),
           const SizedBox(width: 14),
-          const Icon(Icons.chat_bubble_outline_rounded,
-              color: AppColors.textPrimary, size: 24),
+          const Icon(
+            Icons.chat_bubble_outline_rounded,
+            color: AppColors.textPrimary,
+            size: 24,
+          ),
           const SizedBox(width: 14),
-          const Icon(Icons.send_outlined,
-              color: AppColors.textPrimary, size: 24),
+          const Icon(
+            Icons.send_outlined,
+            color: AppColors.textPrimary,
+            size: 24,
+          ),
           const Spacer(),
-          const Icon(Icons.bookmark_border_rounded,
-              color: AppColors.textPrimary, size: 26),
+          const Icon(
+            Icons.bookmark_border_rounded,
+            color: AppColors.textPrimary,
+            size: 26,
+          ),
         ],
       ),
     );
   }
 
   Widget _buildLikes() {
-    final likeCount =
-        widget.post.likes.length + (_isLiked ? 1 : 0);
+    final currentUser = FirebaseService.currentUser;
+    final initialIsLiked =
+        currentUser != null && widget.post.likes.contains(currentUser.uid);
+    int likeCount = widget.post.likes.length;
+
+    if (_isLiked && !initialIsLiked) likeCount++;
+    if (!_isLiked && initialIsLiked) likeCount--;
+
     if (likeCount <= 0) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -277,10 +321,7 @@ class _PostCardState extends State<PostCard>
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
       child: Text(
         widget.post.timeAgo,
-        style: GoogleFonts.inter(
-          fontSize: 12,
-          color: AppColors.textMuted,
-        ),
+        style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
       ),
     );
   }

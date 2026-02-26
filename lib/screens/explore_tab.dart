@@ -122,8 +122,11 @@ class _ExploreTabState extends State<ExploreTab>
                 ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.close_rounded,
-                            color: AppColors.textMuted, size: 20),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: AppColors.textMuted,
+                          size: 20,
+                        ),
                         onPressed: () {
                           _searchController.clear();
                           _performSearch('');
@@ -132,7 +135,9 @@ class _ExploreTabState extends State<ExploreTab>
                     : null,
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
             ),
           ),
@@ -157,8 +162,10 @@ class _ExploreTabState extends State<ExploreTab>
               onTap: () => setState(() => _selectedFilter = filter),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   gradient: isSelected ? AppColors.burgundyGradient : null,
                   color: isSelected ? null : AppColors.elevatedDark,
@@ -172,8 +179,9 @@ class _ExploreTabState extends State<ExploreTab>
                     filter,
                     style: GoogleFonts.inter(
                       fontSize: 13,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
                       color: isSelected
                           ? Colors.white
                           : AppColors.textSecondary,
@@ -214,9 +222,7 @@ class _ExploreTabState extends State<ExploreTab>
 
         final filteredAlumni = _selectedFilter == 'All'
             ? alumni
-            : alumni
-                .where((a) => a.department == _selectedFilter)
-                .toList();
+            : alumni.where((a) => a.department == _selectedFilter).toList();
 
         if (filteredAlumni.isEmpty) {
           return _buildEmptyFilter();
@@ -286,10 +292,7 @@ class _ExploreTabState extends State<ExploreTab>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.8),
-                  ],
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
                 ),
               ),
               child: Column(
@@ -360,8 +363,11 @@ class _ExploreTabState extends State<ExploreTab>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off_rounded,
-              size: 56, color: AppColors.textMuted.withOpacity(0.3)),
+          Icon(
+            Icons.search_off_rounded,
+            size: 56,
+            color: AppColors.textMuted.withOpacity(0.3),
+          ),
           const SizedBox(height: 16),
           Text(
             'No results found',
@@ -374,10 +380,7 @@ class _ExploreTabState extends State<ExploreTab>
           const SizedBox(height: 8),
           Text(
             'Try searching with different keywords',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: AppColors.textMuted,
-            ),
+            style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted),
           ),
         ],
       ),
@@ -389,8 +392,11 @@ class _ExploreTabState extends State<ExploreTab>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.filter_list_off_rounded,
-              size: 48, color: AppColors.textMuted.withOpacity(0.3)),
+          Icon(
+            Icons.filter_list_off_rounded,
+            size: 48,
+            color: AppColors.textMuted.withOpacity(0.3),
+          ),
           const SizedBox(height: 16),
           Text(
             'No alumni in $_selectedFilter',

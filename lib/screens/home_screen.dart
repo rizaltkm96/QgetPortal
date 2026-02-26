@@ -5,6 +5,7 @@ import 'feed_tab.dart';
 import 'explore_tab.dart';
 import 'alumni_directory_tab.dart';
 import 'profile_tab.dart';
+import 'create_post_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -43,6 +44,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _onTabTapped(int index) {
+    if (index != 0) {
+      _fabController.reset();
+    }
     setState(() => _currentIndex = index);
     _pageController.animateToPage(
       index,
@@ -59,7 +63,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         physics: const NeverScrollableScrollPhysics(),
         children: _tabs,
       ),
+      floatingActionButton: _currentIndex == 0 ? _buildFAB() : null,
       bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildFAB() {
+    _fabController.forward();
+    return ScaleTransition(
+      scale: CurvedAnimation(parent: _fabController, curve: Curves.elasticOut),
+      child: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+          );
+        },
+        backgroundColor: AppColors.burgundyAccent,
+        elevation: 4,
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+      ),
     );
   }
 
@@ -85,9 +108,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(Icons.home_rounded, Icons.home_outlined, 'Home', 0),
-              _navItem(Icons.explore_rounded, Icons.explore_outlined, 'Explore', 1),
-              _navItem(Icons.people_rounded, Icons.people_outline_rounded, 'Alumni', 2),
-              _navItem(Icons.person_rounded, Icons.person_outline_rounded, 'Profile', 3),
+              _navItem(
+                Icons.explore_rounded,
+                Icons.explore_outlined,
+                'Explore',
+                1,
+              ),
+              _navItem(
+                Icons.people_rounded,
+                Icons.people_outline_rounded,
+                'Alumni',
+                2,
+              ),
+              _navItem(
+                Icons.person_rounded,
+                Icons.person_outline_rounded,
+                'Profile',
+                3,
+              ),
             ],
           ),
         ),
@@ -96,7 +134,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _navItem(
-      IconData activeIcon, IconData inactiveIcon, String label, int index) {
+    IconData activeIcon,
+    IconData inactiveIcon,
+    String label,
+    int index,
+  ) {
     final isActive = _currentIndex == index;
     return GestureDetector(
       onTap: () => _onTabTapped(index),
@@ -121,7 +163,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Icon(
                 isActive ? activeIcon : inactiveIcon,
                 key: ValueKey(isActive),
-                color: isActive ? AppColors.burgundyAccent : AppColors.textMuted,
+                color: isActive
+                    ? AppColors.burgundyAccent
+                    : AppColors.textMuted,
                 size: 26,
               ),
             ),
@@ -131,8 +175,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                color:
-                    isActive ? AppColors.burgundyAccent : AppColors.textMuted,
+                color: isActive
+                    ? AppColors.burgundyAccent
+                    : AppColors.textMuted,
               ),
             ),
           ],
