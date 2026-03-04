@@ -8,9 +8,12 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Disable runtime font fetching to fix SocketException
-  // and use the fonts bundled in assets instead.
-  GoogleFonts.config.allowRuntimeFetching = false;
+  // Enable runtime font fetching so GoogleFonts can download any weight that
+  // isn't bundled.  This avoids crashes when a font file is missing from
+  // assets (e.g. outfit-semiBold) and is convenient during development.
+  // In production you can still bundle the fonts yourself and set this to
+  // false if you prefer offline operation.
+  GoogleFonts.config.allowRuntimeFetching = true;
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const QgetPortalApp());
