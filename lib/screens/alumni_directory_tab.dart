@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/alumni_model.dart';
-import '../services/firebase_service.dart';
+import '../providers/app_providers.dart';
 import '../widgets/shimmer_loading.dart';
 import '../widgets/member_avatar.dart';
 import 'alumni_profile_screen.dart';
 
-class AlumniDirectoryTab extends StatefulWidget {
+class AlumniDirectoryTab extends ConsumerStatefulWidget {
   const AlumniDirectoryTab({super.key});
 
   @override
-  State<AlumniDirectoryTab> createState() => _AlumniDirectoryTabState();
+  ConsumerState<AlumniDirectoryTab> createState() => _AlumniDirectoryTabState();
 }
 
-class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
+class _AlumniDirectoryTabState extends ConsumerState<AlumniDirectoryTab>
     with AutomaticKeepAliveClientMixin {
   String _sortBy = 'name';
   bool _isGridView = false;
@@ -25,21 +26,23 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final alumniAsync = ref.watch(alumniStreamProvider);
     return Scaffold(
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
+            _buildHeader(alumniAsync),
             const Divider(height: 1, color: AppColors.borderDark),
-            Expanded(child: _buildAlumniList()),
+            Expanded(child: _buildAlumniList(alumniAsync)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(AsyncValue<List<AlumniModel>> alumniAsync) {
+    final count = alumniAsync.valueOrNull?.length ?? 0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(
@@ -58,7 +61,6 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
               ),
               Row(
                 children: [
-                  // Toggle view
                   GestureDetector(
                     onTap: () => setState(() => _isGridView = !_isGridView),
                     child: AnimatedContainer(
@@ -111,18 +113,12 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
             ],
           ),
           const SizedBox(height: 8),
-          StreamBuilder<List<AlumniModel>>(
-            stream: FirebaseService.getAlumniStream(),
-            builder: (context, snapshot) {
-              final count = snapshot.data?.length ?? 0;
-              return Text(
-                '$count members',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: AppColors.textMuted,
-                ),
-              );
-            },
+          Text(
+            '$count members',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: AppColors.textMuted,
+            ),
           ),
         ],
       ),
@@ -155,19 +151,11 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
     );
   }
 
-  Widget _buildAlumniList() {
-    return StreamBuilder<List<AlumniModel>>(
-      stream: FirebaseService.getAlumniStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildListShimmer();
-        }
-        final alumni = snapshot.data ?? [];
-        if (alumni.isEmpty) {
-          return _buildEmptyState();
-        }
+  Widget _buildAlumniList(AsyncValue<List<AlumniModel>> alumniAsync) {
+    return alumniAsync.when(
+      data: (alumni) {
+        if (alumni.isEmpty) return _buildEmptyState();
 
-        // Sort
         final sorted = List<AlumniModel>.from(alumni);
         switch (_sortBy) {
           case 'year':
@@ -182,11 +170,11 @@ class _AlumniDirectoryTabState extends State<AlumniDirectoryTab>
             sorted.sort((a, b) => a.name.compareTo(b.name));
         }
 
-        if (_isGridView) {
-          return _buildGridLayout(sorted);
-        }
+        if (_isGridView) return _buildGridLayout(sorted);
         return _buildListLayout(sorted);
       },
+      loading: () => _buildListShimmer(),
+      error: (_, __) => _buildEmptyState(),
     );
   }
 

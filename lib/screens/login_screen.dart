@@ -1,17 +1,19 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/firebase_service.dart';
 import 'home_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -53,11 +55,40 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Authentication failed: $e')));
+      if (!mounted) return;
+      String message = 'Authentication failed. Please try again.';
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'user-not-found':
+            message = 'No account found for this email.';
+            break;
+          case 'wrong-password':
+          case 'invalid-credential':
+            message = 'Incorrect email or password.';
+            break;
+          case 'email-already-in-use':
+            message = 'This email is already registered. Sign in instead.';
+            break;
+          case 'invalid-email':
+            message = 'Please enter a valid email address.';
+            break;
+          case 'weak-password':
+            message = 'Password is too weak. Use at least 6 characters.';
+            break;
+          case 'user-disabled':
+            message = 'This account has been disabled.';
+            break;
+          case 'too-many-requests':
+            message = 'Too many attempts. Try again later.';
+            break;
+          default:
+            message = e.message ?? message;
+        }
+      } else if (e is Exception && e.toString().contains('no-alumni-email')) {
+        message =
+            'This email is not registered as an alumni member. Please contact admin.';
       }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

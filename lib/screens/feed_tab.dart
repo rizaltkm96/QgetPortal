@@ -1,34 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/post_model.dart';
 import '../models/alumni_model.dart';
-import '../services/firebase_service.dart';
+import '../providers/app_providers.dart';
 import '../widgets/post_card.dart';
 import '../widgets/story_circle.dart';
 import '../widgets/shimmer_loading.dart';
 
-class FeedTab extends StatefulWidget {
+class FeedTab extends ConsumerStatefulWidget {
   const FeedTab({super.key});
 
   @override
-  State<FeedTab> createState() => _FeedTabState();
+  ConsumerState<FeedTab> createState() => _FeedTabState();
 }
 
-class _FeedTabState extends State<FeedTab> with AutomaticKeepAliveClientMixin {
+class _FeedTabState extends ConsumerState<FeedTab>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final alumniAsync = ref.watch(alumniStreamProvider);
+    final postsAsync = ref.watch(postsStreamProvider);
+
     return Scaffold(
       appBar: _buildAppBar(),
       body: RefreshIndicator(
         color: AppColors.burgundyAccent,
         backgroundColor: AppColors.cardDark,
         onRefresh: () async {
-          setState(() {});
+          ref.invalidate(alumniStreamProvider);
+          ref.invalidate(postsStreamProvider);
           await Future.delayed(const Duration(seconds: 1));
         },
         child: CustomScrollView(
@@ -36,14 +42,11 @@ class _FeedTabState extends State<FeedTab> with AutomaticKeepAliveClientMixin {
             parent: AlwaysScrollableScrollPhysics(),
           ),
           slivers: [
-            // Stories section
-            SliverToBoxAdapter(child: _buildStoriesSection()),
-            // Divider
+            SliverToBoxAdapter(child: _buildStoriesSection(alumniAsync)),
             const SliverToBoxAdapter(
               child: Divider(height: 1, color: AppColors.borderDark),
             ),
-            // Posts feed
-            SliverToBoxAdapter(child: _buildFeed()),
+            SliverToBoxAdapter(child: _buildFeed(postsAsync)),
           ],
         ),
       ),
@@ -93,31 +96,22 @@ class _FeedTabState extends State<FeedTab> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _buildStoriesSection() {
+  Widget _buildStoriesSection(AsyncValue<List<AlumniModel>> alumniAsync) {
     return SizedBox(
       height: 110,
-      child: StreamBuilder<List<AlumniModel>>(
-        stream: FirebaseService.getAlumniStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildStoriesShimmer();
-          }
-
-          final alumni = snapshot.data ?? [];
-          if (alumni.isEmpty) {
-            return _buildEmptyStories();
-          }
-
+      child: alumniAsync.when(
+        data: (alumni) {
+          if (alumni.isEmpty) return _buildEmptyStories();
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             physics: const BouncingScrollPhysics(),
             itemCount: alumni.length,
-            itemBuilder: (context, index) {
-              return StoryCircle(alumni: alumni[index]);
-            },
+            itemBuilder: (context, index) => StoryCircle(alumni: alumni[index]),
           );
         },
+        loading: () => _buildStoriesShimmer(),
+        error: (_, __) => _buildEmptyStories(),
       ),
     );
   }
@@ -145,28 +139,19 @@ class _FeedTabState extends State<FeedTab> with AutomaticKeepAliveClientMixin {
     );
   }
 
-  Widget _buildFeed() {
-    return StreamBuilder<List<PostModel>>(
-      stream: FirebaseService.getPostsStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildFeedShimmer();
-        }
-
-        final posts = snapshot.data ?? [];
-        if (posts.isEmpty) {
-          return _buildEmptyFeed();
-        }
-
+  Widget _buildFeed(AsyncValue<List<PostModel>> postsAsync) {
+    return postsAsync.when(
+      data: (posts) {
+        if (posts.isEmpty) return _buildEmptyFeed();
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: posts.length,
-          itemBuilder: (context, index) {
-            return PostCard(post: posts[index]);
-          },
+          itemBuilder: (context, index) => PostCard(post: posts[index]),
         );
       },
+      loading: () => _buildFeedShimmer(),
+      error: (_, __) => _buildEmptyFeed(),
     );
   }
 

@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
-import '../services/firebase_service.dart';
+import '../providers/app_providers.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with TickerProviderStateMixin {
   late AnimationController _logoController;
   late AnimationController _fadeController;
@@ -20,6 +21,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _logoOpacity;
   late Animation<double> _textOpacity;
   late Animation<Offset> _textSlide;
+  bool _navigationScheduled = false;
 
   @override
   void initState() {
@@ -61,23 +63,13 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _startAnimations() async {
     await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
     _logoController.forward();
     await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
     _fadeController.forward();
     await Future.delayed(const Duration(milliseconds: 2000));
-    if (mounted) {
-      final user = FirebaseService.currentUser;
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) =>
-              user != null ? const HomeScreen() : const LoginScreen(),
-          transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 600),
-        ),
-      );
-    }
+    if (mounted) setState(() => _navigationScheduled = true);
   }
 
   @override
@@ -89,6 +81,24 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_navigationScheduled) {
+      setState(() => _navigationScheduled = false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final user = ref.read(authStateChangesProvider).valueOrNull;
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) =>
+                user != null ? const HomeScreen() : const LoginScreen(),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 600),
+          ),
+        );
+      });
+    }
+
     return Scaffold(
       body: Container(
         width: double.infinity,

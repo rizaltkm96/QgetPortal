@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../models/alumni_model.dart';
+import '../providers/app_providers.dart';
 import '../services/firebase_service.dart';
 import '../widgets/shimmer_loading.dart';
 import 'alumni_profile_screen.dart';
 
-class ExploreTab extends StatefulWidget {
+class ExploreTab extends ConsumerStatefulWidget {
   const ExploreTab({super.key});
 
   @override
-  State<ExploreTab> createState() => _ExploreTabState();
+  ConsumerState<ExploreTab> createState() => _ExploreTabState();
 }
 
-class _ExploreTabState extends State<ExploreTab>
+class _ExploreTabState extends ConsumerState<ExploreTab>
     with AutomaticKeepAliveClientMixin {
   final TextEditingController _searchController = TextEditingController();
   List<AlumniModel> _searchResults = [];
@@ -65,6 +67,7 @@ class _ExploreTabState extends State<ExploreTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final alumniAsync = ref.watch(alumniStreamProvider);
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -73,7 +76,7 @@ class _ExploreTabState extends State<ExploreTab>
             _buildSearchHeader(),
             _buildFilterChips(),
             const Divider(height: 1, color: AppColors.borderDark),
-            Expanded(child: _buildGrid()),
+            Expanded(child: _buildGrid(alumniAsync)),
           ],
         ),
       ),
@@ -196,7 +199,7 @@ class _ExploreTabState extends State<ExploreTab>
     );
   }
 
-  Widget _buildGrid() {
+  Widget _buildGrid(AsyncValue<List<AlumniModel>> alumniAsync) {
     if (_searchController.text.isNotEmpty) {
       if (_isSearching) {
         return const Center(
@@ -209,27 +212,17 @@ class _ExploreTabState extends State<ExploreTab>
       return _buildAlumniGrid(_searchResults);
     }
 
-    return StreamBuilder<List<AlumniModel>>(
-      stream: FirebaseService.getAlumniStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildGridShimmer();
-        }
-        final alumni = snapshot.data ?? [];
-        if (alumni.isEmpty) {
-          return _buildEmptyState();
-        }
-
+    return alumniAsync.when(
+      data: (alumni) {
+        if (alumni.isEmpty) return _buildEmptyState();
         final filteredAlumni = _selectedFilter == 'All'
             ? alumni
             : alumni.where((a) => a.department == _selectedFilter).toList();
-
-        if (filteredAlumni.isEmpty) {
-          return _buildEmptyFilter();
-        }
-
+        if (filteredAlumni.isEmpty) return _buildEmptyFilter();
         return _buildAlumniGrid(filteredAlumni);
       },
+      loading: () => _buildGridShimmer(),
+      error: (_, __) => _buildEmptyState(),
     );
   }
 

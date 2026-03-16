@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
+import '../providers/app_providers.dart';
 import '../services/firebase_service.dart';
 import 'edit_profile_screen.dart';
 import 'login_screen.dart';
 
-class ProfileTab extends StatefulWidget {
+class ProfileTab extends ConsumerStatefulWidget {
   const ProfileTab({super.key});
 
   @override
-  State<ProfileTab> createState() => _ProfileTabState();
+  ConsumerState<ProfileTab> createState() => _ProfileTabState();
 }
 
-class _ProfileTabState extends State<ProfileTab>
+class _ProfileTabState extends ConsumerState<ProfileTab>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
@@ -21,13 +23,16 @@ class _ProfileTabState extends State<ProfileTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final user = ref.watch(currentUserProvider);
+    final alumniAsync = ref.watch(currentAlumniProvider);
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
-              _buildHeader(),
+              _buildHeader(user, alumniAsync),
               _buildQuickStats(),
               _buildMenuSection(),
               _buildAboutSection(),
@@ -39,8 +44,11 @@ class _ProfileTabState extends State<ProfileTab>
     );
   }
 
-  Widget _buildHeader() {
-    final user = FirebaseService.currentUser;
+  Widget _buildHeader(dynamic user, AsyncValue alumniAsync) {
+    final alumni = alumniAsync.valueOrNull;
+    final photoUrl = alumni?.photoUrl;
+    final displayName = alumni?.name ?? user?.displayName ?? 'Alumni User';
+
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       child: Column(
@@ -76,7 +84,7 @@ class _ProfileTabState extends State<ProfileTab>
             ],
           ),
           const SizedBox(height: 24),
-          // Profile avatar
+          // Profile avatar (alumni photo or auth photo or placeholder)
           Container(
             width: 100,
             height: 100,
@@ -96,10 +104,12 @@ class _ProfileTabState extends State<ProfileTab>
               child: CircleAvatar(
                 radius: 47,
                 backgroundColor: AppColors.cardDark,
-                backgroundImage: user?.photoURL != null
-                    ? CachedNetworkImageProvider(user!.photoURL!)
-                    : null,
-                child: user?.photoURL == null
+                backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                    ? CachedNetworkImageProvider(photoUrl)
+                    : user?.photoURL != null
+                        ? CachedNetworkImageProvider(user!.photoURL!)
+                        : null,
+                child: (photoUrl == null || photoUrl.isEmpty) && user?.photoURL == null
                     ? Icon(
                         Icons.person_rounded,
                         size: 44,
@@ -111,7 +121,7 @@ class _ProfileTabState extends State<ProfileTab>
           ),
           const SizedBox(height: 16),
           Text(
-            user?.displayName ?? 'Alumni User',
+            displayName,
             style: GoogleFonts.outfit(
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -143,22 +153,15 @@ class _ProfileTabState extends State<ProfileTab>
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
-                onTap: () async {
-                  if (user == null) {
-                    // Navigate to Sign In (if we had a screen)
-                    return;
-                  }
-
-                  // Show loading or just navigate
-                  final alumni = await FirebaseService.getAlumniById(user.uid);
-                  if (mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => EditProfileScreen(alumni: alumni),
-                      ),
-                    );
-                  }
+                onTap: () {
+                  if (user == null) return;
+                  final alumniValue = ref.read(currentAlumniProvider).valueOrNull;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EditProfileScreen(alumni: alumniValue),
+                    ),
+                  );
                 },
                 child: Center(
                   child: Text(
@@ -250,20 +253,16 @@ class _ProfileTabState extends State<ProfileTab>
                   Icons.person_outline_rounded,
                   'My Profile',
                   'View and edit your profile',
-                  onTap: () async {
-                    final user = FirebaseService.currentUser;
+                  onTap: () {
+                    final user = ref.read(currentUserProvider);
                     if (user != null) {
-                      final alumni = await FirebaseService.getAlumniById(
-                        user.uid,
+                      final alumni = ref.read(currentAlumniProvider).valueOrNull;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EditProfileScreen(alumni: alumni),
+                        ),
                       );
-                      if (mounted) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => EditProfileScreen(alumni: alumni),
-                          ),
-                        );
-                      }
                     }
                   },
                 ),

@@ -36,6 +36,20 @@ class FirebaseService {
     return null;
   }
 
+  /// Returns the current signed-in user's alumni profile by matching Auth email to [users.Email].
+  /// Use this for profile tab, edit profile, etc. Returns null if not signed in or no matching user doc.
+  static Future<AlumniModel?> getCurrentAlumni() async {
+    final email = _auth.currentUser?.email?.trim().toLowerCase();
+    if (email == null || email.isEmpty) return null;
+    final snapshot = await _firestore
+        .collection('users')
+        .where('Email', isEqualTo: email)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) return null;
+    return AlumniModel.fromFirestore(snapshot.docs.first);
+  }
+
   /// Update existing user profile in Firestore (users collection). [data] must use Firestore field names (e.g. Member_Name, Year, Branch_Name, Company_Name, Position).
   static Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
     await _firestore.collection('users').doc(uid).update(data);
@@ -116,17 +130,35 @@ class FirebaseService {
 
   static Future<UserCredential> signIn(String email, String password) async {
     return await _auth.signInWithEmailAndPassword(
-        email: email, password: password);
+        email: email.trim(), password: password);
   }
 
+  /// Sign up only allowed if [email] exists in the `users` collection (Email field).
+  /// Throws [Exception] with message 'no-alumni-email' when no matching user doc is found.
   static Future<UserCredential> signUp(String email, String password) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final snapshot = await _firestore
+        .collection('users')
+        .where('Email', isEqualTo: normalizedEmail)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) {
+      throw Exception('no-alumni-email');
+    }
     return await _auth.createUserWithEmailAndPassword(
-        email: email, password: password);
+        email: email.trim(), password: password);
   }
 
   static Future<void> signOut() async {
     await _auth.signOut();
   }
+
+  // ─── Social sign-in (future) ────────────────────────
+  // To add Google sign-in later:
+  // 1. Enable Google in Firebase Console → Authentication → Sign-in method.
+  // 2. Add google_sign_in (and for web, use signInWithPopup/signInWithRedirect).
+  // 3. After sign-in, link to alumni the same way: get currentUser.email and call
+  //    getCurrentAlumni() (or query users where Email == email) to show profile.
 
   // ─── Stats ──────────────────────────────────────────
 

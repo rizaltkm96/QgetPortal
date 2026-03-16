@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/alumni_model.dart';
+import '../providers/app_providers.dart';
 import '../services/firebase_service.dart';
 
-class EditProfileScreen extends StatefulWidget {
+class EditProfileScreen extends ConsumerStatefulWidget {
   final AlumniModel? alumni;
 
   const EditProfileScreen({super.key, this.alumni});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
+class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _yearController;
@@ -66,9 +68,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'Position': _positionController.text.trim(),
       };
 
-      await FirebaseService.updateUserProfile(user.uid, data);
+      await FirebaseService.updateUserProfile(widget.alumni!.uid, data);
 
       if (mounted) {
+        ref.invalidate(currentAlumniProvider);
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully!')),

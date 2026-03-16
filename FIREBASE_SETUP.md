@@ -101,34 +101,42 @@ Rules are in `storage.rules` (allow read for all paths in the bucket).
 3. You should see the deployed rules (e.g. `allow read: if true` for `/{allPaths=**}`).
 4. In **Storage** → **Files**, open a file under `Images/` and check its URL: the host should match the bucket (e.g. `databaseqget.appspot.com` or `databaseqget.firebasestorage.app`). Your Firestore `ImgURL` values must use that same bucket.
 
-**If you see "blocked by CORS policy" on web** (e.g. from `http://localhost:53851`): the Storage bucket must have CORS configured. Do this **once**:
+**If you see "blocked by CORS policy" on web** (e.g. from `http://localhost:49875`): the Storage bucket must have CORS configured. The config file is in the repo; you must apply it **once** with Google Cloud:
 
 1. **Install Google Cloud SDK** (includes `gsutil`): https://cloud.google.com/sdk/docs/install  
    Or with Chocolatey: `choco install gcloudsdk`
 
-2. **Log in and set project:**
+2. **Open PowerShell**, go to the project folder (where `storage.cors.json` is), then run:
    ```powershell
    gcloud auth login
    gcloud config set project databaseqget
-   ```
-
-3. **Apply CORS** from your project root (`Qget_portal`):
-   ```powershell
-   cd E:\AI_projects\Qget_portal
    gsutil cors set storage.cors.json gs://databaseqget.appspot.com
    ```
    You should see: `Setting CORS on gs://databaseqget.appspot.com/...`
 
-4. **Hard-refresh the app** (Ctrl+Shift+R) or restart `flutter run -d chrome`.  
-   CORS is cached; if it still fails, wait a minute and try again.
+3. **Hard-refresh the app** (Ctrl+Shift+R) or restart `flutter run -d chrome`.  
+   CORS can be cached; if it still fails, wait a minute and try again.
+
+**If `gsutil` is not found:** install the full [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) and restart the terminal.  
+**If you get permission errors:** use an account that has Storage Admin (or Owner) on the **databaseqget** project.
 
 The repo’s `storage.cors.json` allows GET from any origin and from `localhost` so Flutter web (e.g. `http://localhost:53851`) can load images. For production, restrict `"origin"` to your real app URL.
 
-## 6. (Optional) Create Firestore and Auth in Firebase Console
+## 6. Enable Email/Password sign-in (required for app login)
+
+1. Open [Firebase Console](https://console.firebase.google.com) and select the **qget-db** project (the one used by the app).
+2. Go to **Build** → **Authentication** → **Sign-in method**.
+3. Click **Email/Password**, turn **Enable** on, then **Save**.
+
+Without this, sign-in and sign-up in the app will fail. Google sign-in can be added later from the same Sign-in method page.
+
+**Sign-up is restricted to existing alumni:** the app only allows creating an account if the email exists in the Firestore `users` collection (field `Email`). Ensure each alumni who should be able to sign in has a `users` document with their login email in the `Email` field (use lowercase for reliable matching).
+
+## 7. (Optional) Create Firestore and Auth in Firebase Console
 
 1. Open [Firebase Console](https://console.firebase.google.com) and select your project.
 2. **Firestore:** Build → Firestore Database → Create database (start in test mode for dev).
-3. **Authentication:** Build → Authentication → Get started → enable Email/Password (or other sign-in methods you need).
+3. **Authentication:** Build → Authentication → Get started (and enable Email/Password as in section 6).
 
 ---
 
