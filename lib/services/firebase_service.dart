@@ -51,8 +51,64 @@ class FirebaseService {
   }
 
   /// Update existing user profile in Firestore (users collection). [data] must use Firestore field names (e.g. Member_Name, Year, Branch_Name, Company_Name, Position).
+  /// Do not send [CreatedAt] here unless you intend to change it; it is set on document creation only.
   static Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
     await _firestore.collection('users').doc(uid).update(data);
+  }
+
+  /// Creates a `users` document if it does not exist, with [CreatedAt] set to today (`dd-MM-yyyy`).
+  /// Requires Firestore rules that allow this write (repo rules often deny client writes to `users`).
+  static Future<void> createUserDocument(String uid, Map<String, dynamic> data) async {
+    final ref = _firestore.collection('users').doc(uid);
+    final snap = await ref.get();
+    if (snap.exists) return;
+    await ref.set({
+      ...data,
+      'CreatedAt': AlumniModel.createdAtStringNow(),
+    });
+  }
+
+  /// True if another `users` doc already has this [email] (normalized). Omit [exceptDocId] when creating.
+  static Future<bool> isAlumniEmailTaken(String email, {String? exceptDocId}) async {
+    final e = email.trim().toLowerCase();
+    if (e.isEmpty) return false;
+    final snap = await _firestore
+        .collection('users')
+        .where('Email', isEqualTo: e)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return false;
+    if (exceptDocId != null && snap.docs.first.id == exceptDocId) return false;
+    return true;
+  }
+
+  /// Adds a new `users` document with auto ID. [Email] must be unique (sign-up matches this field).
+  static Future<String> createAlumniMember({
+    required String memberName,
+    required String email,
+    String? year,
+    String? branchName,
+    String? companyName,
+    String? position,
+  }) async {
+    final e = email.trim().toLowerCase();
+    if (await isAlumniEmailTaken(e)) {
+      throw StateError('email-already-exists');
+    }
+    final doc = await _firestore.collection('users').add({
+      'Member_Name': memberName.trim(),
+      'Email': e,
+      'Year': year?.trim() ?? '',
+      'Branch_Name': branchName?.trim() ?? '',
+      'Company_Name': companyName?.trim() ?? '',
+      'Position': position?.trim() ?? '',
+      'CreatedAt': AlumniModel.createdAtStringNow(),
+    });
+    return doc.id;
+  }
+
+  static Future<void> deleteAlumniMember(String docId) async {
+    await _firestore.collection('users').doc(docId).delete();
   }
 
   static Future<List<AlumniModel>> searchAlumni(String query) async {

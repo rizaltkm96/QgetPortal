@@ -1,0 +1,4 @@
+# Google Cloud service account keys (never commit)
+serviceAccountKey.json
+serviceAcountKey.json
+node_modules/

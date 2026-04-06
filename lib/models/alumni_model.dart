@@ -6,6 +6,8 @@ class AlumniModel {
   final String uid;
   final String name;
   final String email;
+  /// Firestore [CreatedAt]: `dd-MM-yyyy` (e.g. `22-01-2026`).
+  final String? createdAt;
   /// Member photo. From Firestore field [ImgURL] only; it loads the image.
   final String? photoUrl;
   final String? year;
@@ -54,7 +56,16 @@ class AlumniModel {
     this.child3Dob,
     this.child4Name,
     this.child4Dob,
+    this.createdAt,
   });
+
+  /// Today as Firestore `CreatedAt` string (`dd-MM-yyyy`).
+  static String createdAtStringNow() {
+    final d = DateTime.now();
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd-$mm-${d.year}';
+  }
 
   factory AlumniModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
@@ -88,7 +99,14 @@ class AlumniModel {
       child3Dob: data['Child3_DOB'] as String?,
       child4Name: data['Child4_Name'] as String?,
       child4Dob: data['Child4_DOB'] as String?,
+      createdAt: _trimOrNull(data['CreatedAt'] as String?),
     );
+  }
+
+  static String? _trimOrNull(String? s) {
+    if (s == null) return null;
+    final t = s.trim();
+    return t.isEmpty ? null : t;
   }
 
   String get initials {

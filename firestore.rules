@@ -4,7 +4,8 @@ service cloud.firestore {
     // Portal app: read users (directory), read/write posts (feed).
     match /users/{userId} {
       allow read: if true;
-      allow write: if false;
+      // Any signed-in user can manage roster (tighten with admin custom claims in production).
+      allow create, update, delete: if request.auth != null;
     }
     match /posts/{postId} {
       allow read, write: if true;
