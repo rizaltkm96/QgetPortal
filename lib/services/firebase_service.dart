@@ -154,10 +154,55 @@ class FirebaseService {
     return _membersRef.child(id).update(_withUpdateTimestamp(patch));
   }
 
+  /// RTDB child key used by the legacy roster: [Member_Name] + space + [UID].
+  static String memberRtdbKey(String memberName, int uid) {
+    final safeName =
+        memberName.trim().replaceAll(RegExp(r'[.#$\[\]/]'), '');
+    return '$safeName $uid';
+  }
+
+  static int _uidFromMember(AlumniModel member) {
+    final fromField = int.tryParse(member.uidField.trim());
+    if (fromField != null && fromField > 0) return fromField;
+
+    final key = member.id;
+    if (key.startsWith('-')) return 0;
+
+    final match = RegExp(r'(\d+)$').firstMatch(key);
+    if (match == null) return 0;
+    return int.tryParse(match.group(1)!) ?? 0;
+  }
+
+  static Future<int> nextMemberUid() async {
+    final members = await getMembersList();
+    var maxUid = 0;
+    for (final member in members) {
+      final uid = _uidFromMember(member);
+      if (uid > maxUid) maxUid = uid;
+    }
+    return maxUid + 1;
+  }
+
   static Future<String> createMember(Map<String, dynamic> data) async {
-    final ref = _membersRef.push();
-    await ref.set(_withCreateTimestamps(data));
-    return ref.key!;
+    final memberName = (data['Member_Name']?.toString() ?? '').trim();
+    if (memberName.isEmpty) {
+      throw ArgumentError('Member_Name is required');
+    }
+
+    final uid = await nextMemberUid();
+    final key = memberRtdbKey(memberName, uid);
+    final existing = await _membersRef.child(key).get();
+    if (existing.exists) {
+      throw StateError('Member already exists: $key');
+    }
+
+    final payload = <String, dynamic>{
+      ...data,
+      'Member_Name': memberName,
+      'UID': uid,
+    };
+    await _membersRef.child(key).set(_withCreateTimestamps(payload));
+    return key;
   }
 
   static Future<void> deleteMember(String id) {

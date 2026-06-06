@@ -32,6 +32,8 @@ jobs:
 
       - run: flutter build web --release --base-href "/QgetPortal/"
 
+      - run: cp build/web/index.html build/web/404.html
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web

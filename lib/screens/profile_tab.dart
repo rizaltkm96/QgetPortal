@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qget_portal/providers/app_providers.dart';
 import 'package:qget_portal/services/firebase_service.dart';
 import 'package:qget_portal/screens/login_screen.dart';
-import 'package:qget_portal/screens/edit_profile_screen.dart';
 import 'package:qget_portal/screens/alumni_member_form_screen.dart';
 import 'package:qget_portal/widgets/member_avatar.dart';
 import 'package:qget_portal/widgets/glass.dart';
@@ -176,7 +175,8 @@ class ProfileTab extends ConsumerWidget {
                       onPressed: () {
                         Navigator.of(context).push<void>(
                           MaterialPageRoute<void>(
-                            builder: (_) => EditProfileScreen(alumni: alum),
+                            builder: (_) =>
+                                AlumniMemberFormScreen(editingAlumni: alum),
                           ),
                         );
                       },

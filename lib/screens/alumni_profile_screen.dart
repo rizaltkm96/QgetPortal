@@ -1,23 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:qget_portal/models/alumni_model.dart';
+import 'package:qget_portal/providers/app_providers.dart';
+import 'package:qget_portal/screens/alumni_member_form_screen.dart';
 import 'package:qget_portal/widgets/member_avatar.dart';
 import 'package:qget_portal/widgets/app_gradient_background.dart';
 import 'package:qget_portal/widgets/glass.dart';
 
-class AlumniProfileScreen extends StatelessWidget {
+class AlumniProfileScreen extends ConsumerWidget {
   const AlumniProfileScreen({super.key, required this.alumni});
 
   final AlumniModel alumni;
 
+  AlumniModel _resolveAlumni(AsyncValue<List<AlumniModel>> async) {
+    return async.maybeWhen(
+      data: (all) {
+        for (final member in all) {
+          if (member.id == alumni.id) return member;
+        }
+        return alumni;
+      },
+      orElse: () => alumni,
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final alumniAsync = ref.watch(alumniStreamProvider);
+    final current = _resolveAlumni(alumniAsync);
+
     return AppGradientBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text(alumni.memberName.isNotEmpty ? alumni.memberName : 'Alumni'),
+          title: Text(
+            current.memberName.isNotEmpty ? current.memberName : 'Alumni',
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Edit member',
+              icon: const Icon(Icons.edit_rounded),
+              onPressed: () async {
+                await Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        AlumniMemberFormScreen(editingAlumni: current),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
         body: ListView(
           padding: const EdgeInsets.all(20),
@@ -27,20 +61,23 @@ class AlumniProfileScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
               child: Column(
                 children: [
-                  MemberAvatar(alumni: alumni, radius: 48),
+                  MemberAvatar(alumni: current, radius: 48),
                   const SizedBox(height: 16),
                   Text(
-                    alumni.memberName.isNotEmpty ? alumni.memberName : alumni.email,
+                    current.memberName.isNotEmpty
+                        ? current.memberName
+                        : current.email,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  if (alumni.displaySubtitle.isNotEmpty) ...[
+                  if (current.displaySubtitle.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      alumni.displaySubtitle,
+                      current.displaySubtitle,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
                   ],
@@ -48,29 +85,29 @@ class AlumniProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            _row(context, 'Email', alumni.email),
-            _row(context, 'Company', alumni.companyName),
-            _row(context, 'Position', alumni.position),
-            _row(context, 'Phone', alumni.contactNumber),
-            _row(context, 'WhatsApp', alumni.whatsappNumber),
-            _row(context, 'Blood group', alumni.bloodGroup),
-            _row(context, 'Social / website', alumni.socialMediaLink),
-            _row(context, 'Spouse', alumni.spouseName),
-            _row(context, 'Spouse is member', alumni.spouseIsMember),
-            _row(context, 'UID', alumni.uidField),
-            _row(context, 'EF number', alumni.efNumber),
-            _row(context, 'Image file', alumni.imageName),
-            _rowSelectableUrl(context, 'Photo URL', alumni.imgUrl),
-            ..._childRows(context),
-            _row(context, 'Created', alumni.createdAt),
-            _row(context, 'Last updated', alumni.updatedAtFormatted),
+            _row(context, 'Email', current.email),
+            _row(context, 'Company', current.companyName),
+            _row(context, 'Position', current.position),
+            _row(context, 'Phone', current.contactNumber),
+            _row(context, 'WhatsApp', current.whatsappNumber),
+            _row(context, 'Blood group', current.bloodGroup),
+            _row(context, 'Social / website', current.socialMediaLink),
+            _row(context, 'Spouse', current.spouseName),
+            _row(context, 'Spouse is member', current.spouseIsMember),
+            _row(context, 'UID', current.uidField),
+            _row(context, 'EF number', current.efNumber),
+            _row(context, 'Image file', current.imageName),
+            _rowSelectableUrl(context, 'Photo URL', current.imgUrl),
+            ..._childRows(context, current),
+            _row(context, 'Created', current.createdAt),
+            _row(context, 'Last updated', current.updatedAtFormatted),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _childRows(BuildContext context) {
+  List<Widget> _childRows(BuildContext context, AlumniModel member) {
     final out = <Widget>[];
     const pairs = [
       (1, 'Child 1 name', 'Child 1 DOB'),
@@ -81,13 +118,13 @@ class AlumniProfileScreen extends StatelessWidget {
     String nameFor(int n) {
       switch (n) {
         case 1:
-          return alumni.child1Name;
+          return member.child1Name;
         case 2:
-          return alumni.child2Name;
+          return member.child2Name;
         case 3:
-          return alumni.child3Name;
+          return member.child3Name;
         case 4:
-          return alumni.child4Name;
+          return member.child4Name;
         default:
           return '';
       }
@@ -96,13 +133,13 @@ class AlumniProfileScreen extends StatelessWidget {
     String dobFor(int n) {
       switch (n) {
         case 1:
-          return alumni.child1Dob;
+          return member.child1Dob;
         case 2:
-          return alumni.child2Dob;
+          return member.child2Dob;
         case 3:
-          return alumni.child3Dob;
+          return member.child3Dob;
         case 4:
-          return alumni.child4Dob;
+          return member.child4Dob;
         default:
           return '';
       }

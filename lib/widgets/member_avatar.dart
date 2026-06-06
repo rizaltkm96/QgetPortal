@@ -157,17 +157,8 @@ class _StorageBytesAvatarState extends State<_StorageBytesAvatar> {
     return CircleAvatar(
       radius: widget.radius,
       backgroundColor:
-          Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
-      child: ClipOval(
-        child: CachedNetworkImage(
-          imageUrl: widget.url,
-          width: widget.radius * 2,
-          height: widget.radius * 2,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => _initials(context),
-          errorWidget: (_, __, ___) => _initials(context),
-        ),
-      ),
+          Theme.of(context).colorScheme.primary.withValues(alpha: 0.35),
+      child: _initials(context),
     );
   }
 

@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
   cupertino_icons: ^1.0.8
   firebase_core: ^3.8.1
   firebase_auth: ^5.3.4
@@ -23,6 +25,7 @@ dependencies:
   shimmer: ^3.0.0
   excel: ^4.0.6
   file_saver: ^0.2.14
+  file_selector: ^1.0.3
 
 dev_dependencies:
   flutter_test:
