@@ -1,184 +1,87 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../theme/app_theme.dart';
-import 'feed_tab.dart';
-import 'explore_tab.dart';
-import 'alumni_directory_tab.dart';
-import 'profile_tab.dart';
-import 'create_post_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomeScreen extends StatefulWidget {
+import 'package:qget_portal/providers/app_providers.dart';
+import 'package:qget_portal/providers/ui_state_providers.dart';
+import 'package:qget_portal/screens/alumni_directory_tab.dart';
+import 'package:qget_portal/screens/explore_tab.dart';
+import 'package:qget_portal/screens/feed_tab.dart';
+import 'package:qget_portal/screens/profile_tab.dart';
+import 'package:qget_portal/screens/create_post_screen.dart';
+import 'package:qget_portal/widgets/app_gradient_background.dart';
+import 'package:qget_portal/widgets/glass.dart';
+
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  int _currentIndex = 0;
-  late PageController _pageController;
-  late AnimationController _fabController;
-
-  final List<Widget> _tabs = const [
-    FeedTab(),
-    ExploreTab(),
-    AlumniDirectoryTab(),
-    ProfileTab(),
-  ];
+  static const _titles = ['Feed', 'Explore', 'Directory', 'Profile'];
 
   @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-    _fabController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-  }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final page = ref.watch(homeTabIndexProvider);
+    final pc = ref.watch(homePageControllerProvider);
+    final signedIn = ref.watch(currentUserProvider) != null;
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    _fabController.dispose();
-    super.dispose();
-  }
-
-  void _onTabTapped(int index) {
-    if (index != 0) {
-      _fabController.reset();
-    }
-    setState(() => _currentIndex = index);
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeInOutCubic,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: _tabs,
-      ),
-      floatingActionButton: _currentIndex == 0 ? _buildFAB() : null,
-      bottomNavigationBar: _buildBottomNav(),
-    );
-  }
-
-  Widget _buildFAB() {
-    _fabController.forward();
-    return ScaleTransition(
-      scale: CurvedAnimation(parent: _fabController, curve: Curves.elasticOut),
-      child: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-          );
-        },
-        backgroundColor: AppColors.burgundyAccent,
-        elevation: 4,
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
-        border: const Border(
-          top: BorderSide(color: AppColors.borderDark, width: 0.5),
+    return AppGradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        appBar: AppBar(
+          title: Text(_titles[page]),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(Icons.home_rounded, Icons.home_outlined, 'Home', 0),
-              _navItem(
-                Icons.explore_rounded,
-                Icons.explore_outlined,
-                'Explore',
-                1,
-              ),
-              _navItem(
-                Icons.people_rounded,
-                Icons.people_outline_rounded,
-                'Alumni',
-                2,
-              ),
-              _navItem(
-                Icons.person_rounded,
-                Icons.person_outline_rounded,
-                'Profile',
-                3,
-              ),
-            ],
-          ),
+        body: PageView(
+          controller: pc,
+          onPageChanged: (i) =>
+              ref.read(homeTabIndexProvider.notifier).state = i,
+          physics: const NeverScrollableScrollPhysics(),
+          children: const [
+            FeedTab(),
+            ExploreTab(),
+            AlumniDirectoryTab(),
+            ProfileTab(),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _navItem(
-    IconData activeIcon,
-    IconData inactiveIcon,
-    String label,
-    int index,
-  ) {
-    final isActive = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => _onTabTapped(index),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 16 : 12,
-          vertical: 8,
-        ),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.burgundy.withOpacity(0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                isActive ? activeIcon : inactiveIcon,
-                key: ValueKey(isActive),
-                color: isActive
-                    ? AppColors.burgundyAccent
-                    : AppColors.textMuted,
-                size: 26,
-              ),
+        floatingActionButton: page == 0 && signedIn
+            ? InstagramGradientFab(
+                onPressed: () async {
+                  await Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const CreatePostScreen(),
+                    ),
+                  );
+                },
+                child: Icon(
+                  Icons.post_add_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              )
+            : null,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: page,
+          onDestinationSelected: (i) {
+            ref.read(homeTabIndexProvider.notifier).state = i;
+            pc.jumpToPage(i);
+          },
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.density_medium_outlined),
+              selectedIcon: Icon(Icons.dynamic_feed_rounded),
+              label: 'Feed',
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                color: isActive
-                    ? AppColors.burgundyAccent
-                    : AppColors.textMuted,
-              ),
+            NavigationDestination(
+              icon: Icon(Icons.explore_outlined),
+              selectedIcon: Icon(Icons.explore_rounded),
+              label: 'Explore',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.people_outline_rounded),
+              selectedIcon: Icon(Icons.people_rounded),
+              label: 'Directory',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline_rounded),
+              selectedIcon: Icon(Icons.person_rounded),
+              label: 'Profile',
             ),
           ],
         ),

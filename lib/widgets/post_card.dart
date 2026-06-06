@@ -1,314 +1,131 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../theme/app_theme.dart';
-import '../models/post_model.dart';
-import '../services/firebase_service.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class PostCard extends StatefulWidget {
+import 'package:qget_portal/models/post_model.dart';
+import 'package:qget_portal/providers/app_providers.dart';
+import 'package:qget_portal/services/firebase_service.dart';
+import 'package:qget_portal/widgets/member_avatar.dart';
+import 'package:qget_portal/models/alumni_model.dart';
+import 'package:qget_portal/widgets/glass.dart';
+
+class PostCard extends ConsumerWidget {
+  const PostCard({
+    super.key,
+    required this.post,
+  });
+
   final PostModel post;
 
-  const PostCard({super.key, required this.post});
-
   @override
-  State<PostCard> createState() => _PostCardState();
-}
-
-class _PostCardState extends State<PostCard>
-    with SingleTickerProviderStateMixin {
-  bool _isLiked = false;
-  late AnimationController _heartController;
-  late Animation<double> _heartScale;
-
-  @override
-  void initState() {
-    super.initState();
-    final currentUser = FirebaseService.currentUser;
-    _isLiked =
-        currentUser != null && widget.post.likes.contains(currentUser.uid);
-
-    _heartController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _heartScale = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0, end: 1.4), weight: 40),
-      TweenSequenceItem(tween: Tween(begin: 1.4, end: 1.0), weight: 30),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0), weight: 30),
-    ]).animate(_heartController);
-  }
-
-  @override
-  void dispose() {
-    _heartController.dispose();
-    super.dispose();
-  }
-
-  void _onDoubleTap() {
-    if (!_isLiked) {
-      _toggleLike();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final liked =
+        user != null && post.likes.contains(user.uid);
+    Future<void> onLike() async {
+      if (user == null) return;
+      try {
+        await FirebaseService.toggleLike(post.id, user.uid);
+      } on Object catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not update like')),
+          );
+        }
+      }
     }
-    _heartController.forward(from: 0);
-  }
 
-  void _toggleLike() {
-    final currentUser = FirebaseService.currentUser;
-    if (currentUser == null) return;
+    final headerAlum = AlumniModel.fromMemberMap({
+      'Member_Name': post.authorName,
+      'Email': '',
+      'ImgURL': post.authorPhotoUrl,
+    }, post.authorUid);
 
-    setState(() {
-      _isLiked = !_isLiked;
-    });
-
-    FirebaseService.toggleLike(widget.post.id, currentUser.uid);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 1),
-      color: AppColors.scaffoldDark,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          _buildHeader(),
-          // Image / Content
-          if (widget.post.imageUrl != null) _buildImage(),
-          // Action bar
-          _buildActionBar(),
-          // Likes
-          _buildLikes(),
-          // Caption
-          if (widget.post.content != null) _buildCaption(),
-          // Time
-          _buildTime(),
-          const Divider(height: 1, color: AppColors.borderDark),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
-        children: [
-          // Avatar with story ring
-          Container(
-            width: 38,
-            height: 38,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: AppColors.storyRingGradient,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(2),
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: AppColors.elevatedDark,
-                backgroundImage: widget.post.authorPhotoUrl != null
-                    ? CachedNetworkImageProvider(widget.post.authorPhotoUrl!)
-                    : null,
-                child: widget.post.authorPhotoUrl == null
-                    ? Text(
-                        widget.post.authorName.isNotEmpty
-                            ? widget.post.authorName[0].toUpperCase()
-                            : '?',
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.burgundyAccent,
-                        ),
-                      )
-                    : null,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Text(
-                      widget.post.authorName,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                MemberAvatar(alumni: headerAlum, radius: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        post.authorName,
+                        style: Theme.of(context).textTheme.titleSmall,
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      Icons.verified_rounded,
-                      size: 14,
-                      color: AppColors.burgundyAccent,
-                    ),
-                  ],
-                ),
-                if (widget.post.authorDepartment != null)
-                  Text(
-                    widget.post.authorDepartment!,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
+                      if (post.authorDepartment.isNotEmpty ||
+                          post.authorGraduationYear.isNotEmpty)
+                        Text(
+                          [
+                            post.authorDepartment,
+                            if (post.authorGraduationYear.isNotEmpty)
+                              'Class of ${post.authorGraduationYear}',
+                          ].where((e) => e.isNotEmpty).join(' · '),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                        ),
+                    ],
                   ),
+                ),
+                Text(
+                  _formatTime(post.createdAt),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                ),
               ],
             ),
-          ),
-          const Icon(
-            Icons.more_horiz_rounded,
-            color: AppColors.textSecondary,
-            size: 22,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImage() {
-    return GestureDetector(
-      onDoubleTap: _onDoubleTap,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CachedNetworkImage(
-            imageUrl: widget.post.imageUrl!,
-            width: double.infinity,
-            height: 380,
-            fit: BoxFit.cover,
-            placeholder: (_, __) => Container(
-              height: 380,
-              color: AppColors.elevatedDark,
-              child: const Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.burgundyAccent,
+            if (post.content.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(post.content),
+            ],
+            if (post.imageUrl.trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: CachedNetworkImage(
+                    imageUrl: post.imageUrl,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                  ),
                 ),
               ),
-            ),
-            errorWidget: (_, __, ___) => Container(
-              height: 380,
-              color: AppColors.elevatedDark,
-              child: const Icon(
-                Icons.broken_image_rounded,
-                color: AppColors.textMuted,
-                size: 40,
-              ),
-            ),
-          ),
-          // Double tap heart animation
-          AnimatedBuilder(
-            listenable: _heartController,
-            builder: (context, _) {
-              return Transform.scale(
-                scale: _heartScale.value,
-                child: Icon(
-                  Icons.favorite_rounded,
-                  color: Colors.white.withOpacity(0.9),
-                  size: 80,
+            ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: user == null ? null : onLike,
+                  icon: Icon(
+                    liked ? Icons.favorite : Icons.favorite_border,
+                    color: liked
+                        ? Theme.of(context).colorScheme.secondary
+                        : null,
+                  ),
                 ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: _toggleLike,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              transitionBuilder: (child, animation) =>
-                  ScaleTransition(scale: animation, child: child),
-              child: Icon(
-                _isLiked
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-                key: ValueKey(_isLiked),
-                color: _isLiked
-                    ? AppColors.burgundyAccent
-                    : AppColors.textPrimary,
-                size: 26,
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          const Icon(
-            Icons.chat_bubble_outline_rounded,
-            color: AppColors.textPrimary,
-            size: 24,
-          ),
-          const SizedBox(width: 14),
-          const Icon(
-            Icons.send_outlined,
-            color: AppColors.textPrimary,
-            size: 24,
-          ),
-          const Spacer(),
-          const Icon(
-            Icons.bookmark_border_rounded,
-            color: AppColors.textPrimary,
-            size: 26,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLikes() {
-    final currentUser = FirebaseService.currentUser;
-    final initialIsLiked =
-        currentUser != null && widget.post.likes.contains(currentUser.uid);
-    int likeCount = widget.post.likes.length;
-
-    if (_isLiked && !initialIsLiked) likeCount++;
-    if (!_isLiked && initialIsLiked) likeCount--;
-
-    if (likeCount <= 0) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Text(
-        '$likeCount ${likeCount == 1 ? 'like' : 'likes'}',
-        style: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCaption() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
-      child: RichText(
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
-        text: TextSpan(
-          children: [
-            TextSpan(
-              text: '${widget.post.authorName} ',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            TextSpan(
-              text: widget.post.content,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-              ),
+                Text('${post.likes.length}'),
+                const SizedBox(width: 16),
+                const Icon(Icons.chat_bubble_outline, size: 22),
+                const SizedBox(width: 6),
+                Text('${post.commentCount}'),
+                const Spacer(),
+                if (user?.uid == post.authorUid)
+                  Text(
+                    'Your post',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+              ],
             ),
           ],
         ),
@@ -316,28 +133,13 @@ class _PostCardState extends State<PostCard>
     );
   }
 
-  Widget _buildTime() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-      child: Text(
-        widget.post.timeAgo,
-        style: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
-      ),
-    );
-  }
-}
-
-class AnimatedBuilder extends AnimatedWidget {
-  final Widget Function(BuildContext, Widget?) builder;
-
-  const AnimatedBuilder({
-    super.key,
-    required super.listenable,
-    required this.builder,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return builder(context, null);
+  static String _formatTime(DateTime? dt) {
+    if (dt == null) return '';
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours < 24) return '${diff.inHours}h';
+    if (diff.inDays < 7) return '${diff.inDays}d';
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 }

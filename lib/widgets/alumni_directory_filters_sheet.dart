@@ -1,259 +1,121 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../theme/app_theme.dart';
+import 'package:qget_portal/models/alumni_directory_filters.dart';
+import 'package:qget_portal/providers/ui_state_providers.dart';
+import 'package:qget_portal/widgets/glass.dart';
 
-/// How to compare member [CreatedAt] to the chosen calendar day.
-enum AlumniCreatedDateRelation {
-  /// Ignore created date.
-  none,
-  /// Member created strictly before the reference day.
-  before,
-  /// Member created strictly after the reference day.
-  after,
-  /// Member created on the same calendar day.
-  sameDay,
-}
+class AlumniDirectoryFiltersSheet {
+  AlumniDirectoryFiltersSheet._();
 
-class AlumniDirectoryAppliedFilters {
-  const AlumniDirectoryAppliedFilters({
-    this.createdRelation = AlumniCreatedDateRelation.none,
-    this.createdReferenceDate,
-  });
-
-  final AlumniCreatedDateRelation createdRelation;
-  final DateTime? createdReferenceDate;
-
-  static const clear = AlumniDirectoryAppliedFilters();
-
-  bool get hasAny =>
-      createdRelation != AlumniCreatedDateRelation.none &&
-      createdReferenceDate != null;
-}
-
-class AlumniDirectoryFiltersSheet extends StatefulWidget {
-  const AlumniDirectoryFiltersSheet({
-    super.key,
-    required this.applied,
-  });
-
-  final AlumniDirectoryAppliedFilters applied;
-
-  @override
-  State<AlumniDirectoryFiltersSheet> createState() =>
-      _AlumniDirectoryFiltersSheetState();
-}
-
-class _AlumniDirectoryFiltersSheetState
-    extends State<AlumniDirectoryFiltersSheet> {
-  late AlumniCreatedDateRelation _createdRelation;
-  DateTime? _createdDate;
-
-  @override
-  void initState() {
-    super.initState();
-    _createdRelation = widget.applied.createdRelation;
-    _createdDate = widget.applied.createdReferenceDate;
-  }
-
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final initial = _createdDate ?? DateTime(now.year, now.month, now.day);
-    final picked = await showDatePicker(
+  static Future<AlumniDirectoryFilters?> show(
+    BuildContext context, {
+    required AlumniDirectoryFilters initial,
+    required List<String> departments,
+    required List<String> years,
+  }) {
+    return showModalBottomSheet<AlumniDirectoryFilters>(
       context: context,
-      initialDate: initial,
-      firstDate: DateTime(1950),
-      lastDate: DateTime(now.year + 1, 12, 31),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppColors.burgundyAccent,
-              surface: AppColors.cardDark,
-              onSurface: AppColors.textPrimary,
-            ),
-            dialogBackgroundColor: AppColors.cardDark,
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) setState(() => _createdDate = picked);
-  }
-
-  void _submit() {
-    if (_createdRelation != AlumniCreatedDateRelation.none &&
-        _createdDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Pick a reference date',
-            style: GoogleFonts.inter(),
-          ),
-          behavior: SnackBarBehavior.floating,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ProviderScope(
+        overrides: [
+          directoryFilterModalInitialProvider.overrideWithValue(initial),
+        ],
+        child: _AlumniDirectoryFiltersSheetBody(
+          departments: departments,
+          years: years,
         ),
-      );
-      return;
-    }
-
-    Navigator.of(context).pop(
-      AlumniDirectoryAppliedFilters(
-        createdRelation: _createdRelation,
-        createdReferenceDate: _createdRelation == AlumniCreatedDateRelation.none
-            ? null
-            : _createdDate,
       ),
     );
   }
+}
+
+class _AlumniDirectoryFiltersSheetBody extends ConsumerWidget {
+  const _AlumniDirectoryFiltersSheetBody({
+    required this.departments,
+    required this.years,
+  });
+
+  final List<String> departments;
+  final List<String> years;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final draft = ref.watch(directoryFilterModalNotifierProvider);
+    ref.watch(directoryFilterModalSearchControllerProvider);
+    final modal = ref.read(directoryFilterModalNotifierProvider.notifier);
+    final searchCtrl = ref.read(directoryFilterModalSearchControllerProvider);
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      child: SingleChildScrollView(
+      padding: EdgeInsets.only(
+        left: 12,
+        right: 12,
+        bottom: MediaQuery.paddingOf(context).bottom + 12,
+        top: 8,
+      ),
+      child: GlassPanel(
+        borderRadius: 24,
+        strongBlur: true,
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-          Text(
-            'Created At',
-            style: GoogleFonts.outfit(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+            Text('Filters', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 16),
+            TextField(
+              controller: searchCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Search',
+                hintText: 'Name, email, company…',
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Firestore field Created At (dd-MM-yyyy). Rows without a value are hidden while a comparison is active.',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: AppColors.textMuted,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 20),
-          _dropdown(
-            label: 'Created At',
-            value: _createdRelation,
-            items: const [
-              DropdownMenuItem(
-                value: AlumniCreatedDateRelation.none,
-                child: Text('No restriction'),
-              ),
-              DropdownMenuItem(
-                value: AlumniCreatedDateRelation.before,
-                child: Text('Before (less than)'),
-              ),
-              DropdownMenuItem(
-                value: AlumniCreatedDateRelation.after,
-                child: Text('After (greater than)'),
-              ),
-              DropdownMenuItem(
-                value: AlumniCreatedDateRelation.sameDay,
-                child: Text('On this date'),
+          const SizedBox(height: 16),
+          DropdownMenu<String>(
+            key: ValueKey<String?>(draft.department),
+            width: MediaQuery.sizeOf(context).width - 40,
+            label: const Text('Department'),
+            initialSelection: draft.department ?? '',
+            dropdownMenuEntries: [
+              const DropdownMenuEntry(value: '', label: 'Any department'),
+              ...departments.map(
+                (d) => DropdownMenuEntry(value: d, label: d),
               ),
             ],
-            onChanged: (v) {
-              if (v == null) return;
-              setState(() => _createdRelation = v);
-            },
+            onSelected: (v) => modal.updateDept(v),
           ),
-          if (_createdRelation != AlumniCreatedDateRelation.none) ...[
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _pickDate,
-              icon: const Icon(Icons.calendar_today_rounded, size: 18),
-              label: Text(
-                _createdDate == null
-                    ? 'Pick Created At reference date'
-                    : '${_createdDate!.day.toString().padLeft(2, '0')}-'
-                        '${_createdDate!.month.toString().padLeft(2, '0')}-'
-                        '${_createdDate!.year}',
-                style: GoogleFonts.inter(),
+          const SizedBox(height: 12),
+          DropdownMenu<String>(
+            key: ValueKey<String?>(draft.year),
+            width: MediaQuery.sizeOf(context).width - 40,
+            label: const Text('Graduation year'),
+            initialSelection: draft.year ?? '',
+            dropdownMenuEntries: [
+              const DropdownMenuEntry(value: '', label: 'Any year'),
+              ...years.map(
+                (y) => DropdownMenuEntry(value: y, label: y),
               ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-                side: const BorderSide(color: AppColors.borderDark),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ],
+            ],
+            onSelected: (v) => modal.updateYear(v),
+          ),
           const SizedBox(height: 24),
           Row(
             children: [
               TextButton(
-                onPressed: () {
-                  setState(() {
-                    _createdRelation = AlumniCreatedDateRelation.none;
-                    _createdDate = null;
-                  });
-                },
-                child: Text(
-                  'Clear',
-                  style: GoogleFonts.inter(color: AppColors.textMuted),
-                ),
+                onPressed: () =>
+                    Navigator.pop(context, const AlumniDirectoryFilters()),
+                child: const Text('Clear all'),
               ),
               const Spacer(),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Cancel',
-                  style: GoogleFonts.inter(color: AppColors.textMuted),
-                ),
-              ),
-              const SizedBox(width: 8),
               FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.burgundyAccent,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: _submit,
-                child: Text(
-                  'Apply',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                ),
+                onPressed: () => Navigator.pop(context, draft),
+                child: const Text('Apply'),
               ),
             ],
           ),
-        ],
-        ),
-      ),
-    );
-  }
-
-  Widget _dropdown({
-    required String label,
-    required AlumniCreatedDateRelation value,
-    required List<DropdownMenuItem<AlumniCreatedDateRelation>> items,
-    required ValueChanged<AlumniCreatedDateRelation?> onChanged,
-  }) {
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: GoogleFonts.inter(color: AppColors.textMuted),
-        filled: true,
-        fillColor: AppColors.elevatedDark,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.borderDark),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.borderDark),
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<AlumniCreatedDateRelation>(
-          value: value,
-          isExpanded: true,
-          dropdownColor: AppColors.elevatedDark,
-          style: GoogleFonts.inter(color: AppColors.textPrimary),
-          items: items,
-          onChanged: onChanged,
+          ],
         ),
       ),
     );

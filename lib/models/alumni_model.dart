@@ -1,142 +1,142 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Member model mapped from Firestore "users" collection.
-/// All fields correspond to real document fields.
+/// Alumni / member record (Firestore or Realtime Database).
 class AlumniModel {
-  final String uid;
-  final String name;
-  final String email;
-  /// Firestore [CreatedAt]: `dd-MM-yyyy` (e.g. `22-01-2026`).
-  final String? createdAt;
-  /// Member photo. From Firestore field [ImgURL] only; it loads the image.
-  final String? photoUrl;
-  final String? year;
-  final String? branchName;
-  final String? companyName;
-  final String? position;
-  final String? contactNumber;
-  final String? whatsappNumber;
-  final String? bloodGroup;
-  final String? spouseName;
-  final String? spouseIsMember;
-  final String? socialMediaLink;
-  final int? numericUid;
-  final String? efNumber;
-  final String? child1Name;
-  final String? child1Dob;
-  final String? child2Name;
-  final String? child2Dob;
-  final String? child3Name;
-  final String? child3Dob;
-  final String? child4Name;
-  final String? child4Dob;
-
   AlumniModel({
-    required this.uid,
-    required this.name,
-    required this.email,
-    this.photoUrl,
-    this.year,
-    this.branchName,
-    this.companyName,
-    this.position,
-    this.contactNumber,
-    this.whatsappNumber,
-    this.bloodGroup,
-    this.spouseName,
-    this.spouseIsMember,
-    this.socialMediaLink,
-    this.numericUid,
-    this.efNumber,
-    this.child1Name,
-    this.child1Dob,
-    this.child2Name,
-    this.child2Dob,
-    this.child3Name,
-    this.child3Dob,
-    this.child4Name,
-    this.child4Dob,
-    this.createdAt,
+    required this.id,
+    required this.raw,
   });
 
-  /// Today as Firestore `CreatedAt` string (`dd-MM-yyyy`).
-  static String createdAtStringNow() {
-    final d = DateTime.now();
-    final dd = d.day.toString().padLeft(2, '0');
-    final mm = d.month.toString().padLeft(2, '0');
-    return '$dd-$mm-${d.year}';
+  /// Document / RTDB child key.
+  final String id;
+
+  /// Underlying field map (preserves extra keys).
+  final Map<String, dynamic> raw;
+
+  String _str(String k) => (raw[k]?.toString() ?? '').trim();
+
+  String get memberName => _str('Member_Name');
+  String get email => _str('Email');
+  String get imgUrl => _str('ImgURL');
+  String get year => _str('Year');
+  String get branchName => _str('Branch_Name');
+  String get companyName => _str('Company_Name');
+  String get position => _str('Position');
+  String get contactNumber => _str('Contact_Number');
+  String get whatsappNumber => _str('Whatsapp_Number');
+  String get bloodGroup => _str('Blood_Group');
+  String get spouseName => _str('Spouse_Name');
+  String get spouseIsMember => _str('Spouse_Is_Member');
+  String get socialMediaLink => _str('Social_Media_Link');
+  String get uidField => _str('UID');
+  String get efNumber => _str('EF_Number');
+  String get child1Name => _str('Child1_Name');
+  String get child2Name => _str('Child2_Name');
+  String get child3Name => _str('Child3_Name');
+  String get child4Name => _str('Child4_Name');
+  String get child1Dob => _str('Child1_DOB');
+  String get child2Dob => _str('Child2_DOB');
+  String get child3Dob => _str('Child3_DOB');
+  String get child4Dob => _str('Child4_DOB');
+  String get createdAtLegacy => _str('CreatedAt');
+  String get imageName => _str('ImageName');
+
+  /// Server timestamp (ms) from RTDB [createdAt]; null for legacy rows.
+  int? get createdAtMillis => _asMillis(raw['createdAt']);
+
+  /// Server timestamp (ms) from RTDB [updatedAt]; null if never updated via app.
+  int? get updatedAtMillis => _asMillis(raw['updatedAt']);
+
+  /// Human-readable date: prefers [createdAt] server ms, else legacy [CreatedAt] string.
+  String get createdAt {
+    final ms = createdAtMillis;
+    if (ms != null) {
+      return _formatDdMmYyyy(DateTime.fromMillisecondsSinceEpoch(ms));
+    }
+    return createdAtLegacy;
   }
 
-  factory AlumniModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-    String? photoUrl = data['ImgURL'] as String?;
-    if (photoUrl != null && photoUrl.isEmpty) photoUrl = null;
-    String? socialLink = data['Social_Media_Link'] as String?;
-    if (socialLink != null && socialLink.isEmpty) socialLink = null;
-
-    return AlumniModel(
-      uid: doc.id,
-      name: (data['Member_Name'] as String? ?? '').trim(),
-      email: (data['Email'] as String? ?? '').trim(),
-      photoUrl: photoUrl,
-      year: data['Year'] as String?,
-      branchName: data['Branch_Name'] as String?,
-      companyName: data['Company_Name'] as String?,
-      position: data['Position'] as String?,
-      contactNumber: data['Contact_Number'] as String?,
-      whatsappNumber: data['Whatsapp_Number'] as String?,
-      bloodGroup: data['Blood_Group'] as String?,
-      spouseName: data['Spouse_Name'] as String?,
-      spouseIsMember: data['Spouse_Is_Member'] as String?,
-      socialMediaLink: socialLink,
-      numericUid: data['UID'] is int ? data['UID'] as int : null,
-      efNumber: data['EF_Number'] as String?,
-      child1Name: data['Child1_Name'] as String?,
-      child1Dob: data['Child1_DOB'] as String?,
-      child2Name: data['Child2_Name'] as String?,
-      child2Dob: data['Child2_DOB'] as String?,
-      child3Name: data['Child3_Name'] as String?,
-      child3Dob: data['Child3_DOB'] as String?,
-      child4Name: data['Child4_Name'] as String?,
-      child4Dob: data['Child4_DOB'] as String?,
-      createdAt: _trimOrNull(data['CreatedAt'] as String?),
-    );
+  /// Human-readable last-update date from [updatedAt] server ms.
+  String get updatedAtFormatted {
+    final ms = updatedAtMillis;
+    if (ms == null) return '';
+    return _formatDdMmYyyy(DateTime.fromMillisecondsSinceEpoch(ms));
   }
 
-  static String? _trimOrNull(String? s) {
-    if (s == null) return null;
-    final t = s.trim();
-    return t.isEmpty ? null : t;
+  static int? _asMillis(Object? v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is double) return v.round();
+    return int.tryParse(v.toString());
+  }
+
+  static String _formatDdMmYyyy(DateTime dt) {
+    final d = dt.day.toString().padLeft(2, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final y = dt.year.toString();
+    return '$d-$m-$y';
+  }
+
+  /// Backward-compatible getters
+  String get graduationYear => year;
+  String get department => branchName;
+  String get currentCompany => companyName;
+  String get currentPosition => position;
+
+  String get displaySubtitle {
+    final parts = <String>[];
+    if (department.isNotEmpty) parts.add(department);
+    if (graduationYear.isNotEmpty) parts.add('Class of $graduationYear');
+    return parts.join(' · ');
   }
 
   String get initials {
-    final parts = name.split(' ');
+    final n = memberName.trim();
+    if (n.isEmpty) {
+      final e = email;
+      if (e.isNotEmpty) return e[0].toUpperCase();
+      return '?';
+    }
+    final parts = n.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+    return parts[0][0].toUpperCase();
   }
 
-  /// Subtitle for list/grid: Position at Company, or Branch · Year.
-  String get displaySubtitle {
-    if (position != null && position!.isNotEmpty && companyName != null && companyName!.isNotEmpty) {
-      return '$position at $companyName';
-    }
-    if (branchName != null && branchName!.isNotEmpty && year != null && year!.isNotEmpty) {
-      return '$branchName · $year';
-    }
-    return branchName ?? year ?? '';
+  static String createdAtStringNow() {
+    final now = DateTime.now();
+    final d = now.day.toString().padLeft(2, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final y = now.year.toString();
+    return '$d-$m-$y';
   }
 
-  /// For backward compatibility where graduationYear is used.
-  String? get graduationYear => year;
+  factory AlumniModel.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? <String, dynamic>{};
+    return AlumniModel.fromMemberMap(data, doc.id);
+  }
 
-  /// For backward compatibility where department is used.
-  String? get department => branchName;
+  factory AlumniModel.fromRtdb(String id, Map<dynamic, dynamic> data) {
+    final map = <String, dynamic>{};
+    data.forEach((k, v) {
+      map[k.toString()] = v;
+    });
+    return AlumniModel.fromMemberMap(map, id);
+  }
 
-  /// For backward compatibility where currentCompany is used.
-  String? get currentCompany => companyName;
+  factory AlumniModel.fromMemberMap(Map<String, dynamic> map, String id) {
+    return AlumniModel(id: id, raw: Map<String, dynamic>.from(map));
+  }
 
-  /// For backward compatibility where currentPosition is used.
-  String? get currentPosition => position;
+  Map<String, dynamic> toRtdbUpdateMap() => Map<String, dynamic>.from(raw);
+
+  AlumniModel copyWithMerged(Map<String, dynamic> patch) {
+    return AlumniModel(
+      id: id,
+      raw: {...raw, ...patch},
+    );
+  }
 }

@@ -1,89 +1,65 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../theme/app_theme.dart';
-import '../models/alumni_model.dart';
-import '../widgets/member_avatar.dart';
-import '../screens/alumni_profile_screen.dart';
+import 'package:qget_portal/models/alumni_model.dart';
+import 'package:qget_portal/widgets/member_avatar.dart';
+import 'package:qget_portal/widgets/glass.dart';
 
 class AlumniCard extends StatelessWidget {
-  final AlumniModel alumni;
+  const AlumniCard({
+    super.key,
+    required this.alumni,
+    this.onTap,
+  });
 
-  const AlumniCard({super.key, required this.alumni});
+  final AlumniModel alumni;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AlumniProfileScreen(alumni: alumni),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.cardDark,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderDark, width: 0.5),
-        ),
+    final subtitle = alumni.displaySubtitle;
+    return GlassCard(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            Hero(
-              tag: 'avatar_${alumni.uid}',
-              child: MemberAvatar(alumni: alumni, size: 48),
-            ),
-            const SizedBox(width: 14),
-            // Info
+            MemberAvatar(alumni: alumni, radius: 28),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          alumni.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
                   Text(
-                    alumni.displaySubtitle,
+                    alumni.memberName.isNotEmpty
+                        ? alumni.memberName
+                        : alumni.email,
+                    style: Theme.of(context).textTheme.titleMedium,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: AppColors.textMuted,
-                    ),
                   ),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  if (alumni.companyName.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '${alumni.position.isNotEmpty ? '${alumni.position}, ' : ''}'
+                      '${alumni.companyName}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
-              ),
-            ),
-            // Follow button
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: AppColors.burgundyGradient,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'View',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
               ),
             ),
           ],

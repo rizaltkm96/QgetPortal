@@ -1,5 +1,5 @@
 {
   "projects": {
-    "default": "qget-db"
+    "default": "databaseqget"
   }
 }

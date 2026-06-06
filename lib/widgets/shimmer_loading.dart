@@ -1,151 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import '../theme/app_theme.dart';
 
-class ShimmerCircle extends StatelessWidget {
-  final double size;
+import 'package:qget_portal/theme/theme_extensions.dart';
 
-  const ShimmerCircle({super.key, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: AppColors.elevatedDark,
-      highlightColor: AppColors.borderDark,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: const BoxDecoration(
-          color: AppColors.elevatedDark,
-          shape: BoxShape.circle,
-        ),
-      ),
-    );
-  }
-}
-
-class ShimmerBox extends StatelessWidget {
-  final double? width;
-  final double? height;
-  final double borderRadius;
-
-  const ShimmerBox({
+class ShimmerLoading extends StatelessWidget {
+  const ShimmerLoading({
     super.key,
-    this.width,
-    this.height,
-    this.borderRadius = 8,
+    this.count = 6,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: AppColors.elevatedDark,
-      highlightColor: AppColors.borderDark,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: AppColors.elevatedDark,
-          borderRadius: BorderRadius.circular(borderRadius),
-        ),
-      ),
-    );
-  }
-}
-
-class ShimmerPostCard extends StatelessWidget {
-  const ShimmerPostCard({super.key});
+  final int count;
 
   @override
   Widget build(BuildContext context) {
+    final style = context.appStyle;
+    final base = style.imitationGlassFill.withValues(alpha: 0.65);
+    final hi = style.imitationGlassBorder.withValues(alpha: 0.9);
+
     return Shimmer.fromColors(
-      baseColor: AppColors.elevatedDark,
-      highlightColor: AppColors.borderDark,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: const BoxDecoration(
-                      color: AppColors.elevatedDark,
-                      shape: BoxShape.circle,
-                    ),
+      baseColor: base,
+      highlightColor: hi,
+      child: Column(
+        children: List.generate(
+          count,
+          (i) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
                   ),
-                  const SizedBox(width: 10),
-                  Column(
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 120,
-                        height: 12,
+                        height: 14,
                         decoration: BoxDecoration(
-                          color: AppColors.elevatedDark,
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Container(
-                        width: 80,
-                        height: 10,
+                        height: 12,
+                        width: 160,
                         decoration: BoxDecoration(
-                          color: AppColors.elevatedDark,
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            // Image
-            Container(
-              width: double.infinity,
-              height: 300,
-              color: AppColors.elevatedDark,
-            ),
-            const SizedBox(height: 10),
-            // Actions
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: List.generate(
-                  3,
-                  (i) => Padding(
-                    padding: const EdgeInsets.only(right: 14),
-                    child: Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: AppColors.elevatedDark,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                  ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Container(
-                width: 200,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: AppColors.elevatedDark,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

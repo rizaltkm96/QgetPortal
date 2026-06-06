@@ -1,245 +1,264 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/alumni_model.dart';
-import '../models/post_model.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
+
+import 'package:qget_portal/models/alumni_model.dart';
+import 'package:qget_portal/models/post_model.dart';
+import 'package:qget_portal/rtdb_members_config.dart';
+
+/// Thrown when sign-up email is not present in the RTDB alumni roster.
+const String kNoAlumniEmailCode = 'no-alumni-email';
 
 class FirebaseService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final FirebaseAuth _auth = FirebaseAuth.instance;
+  FirebaseService._();
 
-  // ─── Users Collection (real Firestore data) ──────────
-  // Maps to AlumniModel for display across Feed, Directory, Explore, Profile.
-
-  static Stream<List<AlumniModel>> getAlumniStream() {
-    return _firestore
-        .collection('users')
-        .orderBy('Member_Name')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => AlumniModel.fromFirestore(doc))
-            .toList());
-  }
-
-  static Future<List<AlumniModel>> getAlumniList() async {
-    final snapshot =
-        await _firestore.collection('users').orderBy('Member_Name').get();
-    return snapshot.docs
-        .map((doc) => AlumniModel.fromFirestore(doc))
-        .toList();
-  }
-
-  static Future<AlumniModel?> getAlumniById(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
-    if (doc.exists) {
-      return AlumniModel.fromFirestore(doc);
-    }
-    return null;
-  }
-
-  /// Returns the current signed-in user's alumni profile by matching Auth email to [users.Email].
-  /// Use this for profile tab, edit profile, etc. Returns null if not signed in or no matching user doc.
-  static Future<AlumniModel?> getCurrentAlumni() async {
-    final email = _auth.currentUser?.email?.trim().toLowerCase();
-    if (email == null || email.isEmpty) return null;
-    final snapshot = await _firestore
-        .collection('users')
-        .where('Email', isEqualTo: email)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isEmpty) return null;
-    return AlumniModel.fromFirestore(snapshot.docs.first);
-  }
-
-  /// Update existing user profile in Firestore (users collection). [data] must use Firestore field names (e.g. Member_Name, Year, Branch_Name, Company_Name, Position).
-  /// Do not send [CreatedAt] here unless you intend to change it; it is set on document creation only.
-  static Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
-    await _firestore.collection('users').doc(uid).update(data);
-  }
-
-  /// Creates a `users` document if it does not exist, with [CreatedAt] set to today (`dd-MM-yyyy`).
-  /// Requires Firestore rules that allow this write (repo rules often deny client writes to `users`).
-  static Future<void> createUserDocument(String uid, Map<String, dynamic> data) async {
-    final ref = _firestore.collection('users').doc(uid);
-    final snap = await ref.get();
-    if (snap.exists) return;
-    await ref.set({
+  /// Millisecond timestamps from the Realtime Database server clock.
+  /// Use these keys in RTDB: `createdAt`, `updatedAt`.
+  static Map<String, dynamic> _withCreateTimestamps(Map<String, dynamic> data) {
+    return {
       ...data,
-      'CreatedAt': AlumniModel.createdAtStringNow(),
-    });
+      'createdAt': ServerValue.timestamp,
+      'updatedAt': ServerValue.timestamp,
+    };
   }
 
-  /// True if another `users` doc already has this [email] (normalized). Omit [exceptDocId] when creating.
-  static Future<bool> isAlumniEmailTaken(String email, {String? exceptDocId}) async {
-    final e = email.trim().toLowerCase();
-    if (e.isEmpty) return false;
-    final snap = await _firestore
-        .collection('users')
-        .where('Email', isEqualTo: e)
-        .limit(1)
-        .get();
-    if (snap.docs.isEmpty) return false;
-    if (exceptDocId != null && snap.docs.first.id == exceptDocId) return false;
-    return true;
+  static Map<String, dynamic> _withUpdateTimestamp(Map<String, dynamic> patch) {
+    return {
+      ...patch,
+      'updatedAt': ServerValue.timestamp,
+    };
   }
 
-  /// Adds a new `users` document with auto ID. [Email] must be unique (sign-up matches this field).
-  static Future<String> createAlumniMember({
-    required String memberName,
-    required String email,
-    String? year,
-    String? branchName,
-    String? companyName,
-    String? position,
-  }) async {
-    final e = email.trim().toLowerCase();
-    if (await isAlumniEmailTaken(e)) {
-      throw StateError('email-already-exists');
+  static FirebaseDatabase get _db {
+    if (kFirebaseRealtimeDatabaseUrl.isNotEmpty) {
+      return FirebaseDatabase.instanceFor(
+        app: Firebase.app(),
+        databaseURL: kFirebaseRealtimeDatabaseUrl,
+      );
     }
-    final doc = await _firestore.collection('users').add({
-      'Member_Name': memberName.trim(),
-      'Email': e,
-      'Year': year?.trim() ?? '',
-      'Branch_Name': branchName?.trim() ?? '',
-      'Company_Name': companyName?.trim() ?? '',
-      'Position': position?.trim() ?? '',
-      'CreatedAt': AlumniModel.createdAtStringNow(),
+    return FirebaseDatabase.instance;
+  }
+
+  static DatabaseReference get _membersRef =>
+      _db.ref().child(kRtdbMembersRoot);
+
+  static FirebaseAuth get auth => FirebaseAuth.instance;
+
+  static Stream<User?> get authStateChanges => auth.authStateChanges();
+
+  static Future<void> signOut() => auth.signOut();
+
+  static Future<UserCredential> signInWithEmailPassword({
+    required String email,
+    required String password,
+  }) {
+    return auth.signInWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+  }
+
+  static String normalizeEmail(String email) => email.trim().toLowerCase();
+
+  static Future<bool> alumniEmailExistsInRoster(String email) async {
+    final n = normalizeEmail(email);
+    var snap = await _membersRef
+        .orderByChild('Email')
+        .equalTo(n)
+        .limitToFirst(1)
+        .get();
+    if (snap.exists && snap.value != null) return true;
+    snap = await _membersRef
+        .orderByChild('Email')
+        .equalTo(email.trim())
+        .limitToFirst(1)
+        .get();
+    return snap.exists && snap.value != null;
+  }
+
+  static Future<UserCredential> signUpWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
+    final ok = await alumniEmailExistsInRoster(email);
+    if (!ok) {
+      throw FirebaseAuthException(
+        code: kNoAlumniEmailCode,
+        message: 'This email is not listed as an alum. Contact admin.',
+      );
+    }
+    return auth.createUserWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+  }
+
+  static AlumniModel? _parseFirstMemberSnapshot(DataSnapshot snap) {
+    if (!snap.exists || snap.value == null) return null;
+    final v = snap.value;
+    if (v is! Map) return null;
+    if (v.isEmpty) return null;
+    final e = v.entries.first;
+    final id = e.key.toString();
+    final data = e.value;
+    if (data is! Map) return null;
+    return AlumniModel.fromRtdb(id, data);
+  }
+
+  static List<AlumniModel> _parseMembersMap(Object? value) {
+    if (value == null || value is! Map) return [];
+    final out = <AlumniModel>[];
+    value.forEach((key, val) {
+      if (val is Map) {
+        out.add(AlumniModel.fromRtdb(key.toString(), val));
+      }
     });
-    return doc.id;
+    return out;
   }
 
-  static Future<void> deleteAlumniMember(String docId) async {
-    await _firestore.collection('users').doc(docId).delete();
+  static Future<AlumniModel?> getCurrentMember(String? email) async {
+    if (email == null || email.isEmpty) return null;
+    final n = normalizeEmail(email);
+    var snap = await _membersRef
+        .orderByChild('Email')
+        .equalTo(n)
+        .limitToFirst(1)
+        .get();
+    var m = _parseFirstMemberSnapshot(snap);
+    if (m != null) return m;
+    snap = await _membersRef
+        .orderByChild('Email')
+        .equalTo(email.trim())
+        .limitToFirst(1)
+        .get();
+    return _parseFirstMemberSnapshot(snap);
   }
 
-  static Future<List<AlumniModel>> searchAlumni(String query) async {
-    final snapshot =
-        await _firestore.collection('users').orderBy('Member_Name').get();
-    final alumni = snapshot.docs
-        .map((doc) => AlumniModel.fromFirestore(doc))
-        .toList();
-    final lowerQuery = query.toLowerCase();
-    return alumni.where((a) {
-      return a.name.toLowerCase().contains(lowerQuery) ||
-          (a.branchName?.toLowerCase().contains(lowerQuery) ?? false) ||
-          (a.year?.contains(lowerQuery) ?? false) ||
-          (a.companyName?.toLowerCase().contains(lowerQuery) ?? false);
+  static Stream<List<AlumniModel>> membersStream() {
+    return _membersRef.onValue.map((e) => _parseMembersMap(e.snapshot.value));
+  }
+
+  static Future<List<AlumniModel>> getMembersList() async {
+    final snap = await _membersRef.get();
+    return _parseMembersMap(snap.value);
+  }
+
+  static Future<AlumniModel?> getMemberById(String id) async {
+    final snap = await _membersRef.child(id).get();
+    if (!snap.exists || snap.value is! Map) return null;
+    return AlumniModel.fromRtdb(id, Map<dynamic, dynamic>.from(snap.value as Map));
+  }
+
+  static Future<void> updateMemberProfile(String id, Map<String, dynamic> patch) {
+    return _membersRef.child(id).update(_withUpdateTimestamp(patch));
+  }
+
+  static Future<String> createMember(Map<String, dynamic> data) async {
+    final ref = _membersRef.push();
+    await ref.set(_withCreateTimestamps(data));
+    return ref.key!;
+  }
+
+  static Future<void> deleteMember(String id) {
+    return _membersRef.child(id).remove();
+  }
+
+  static List<AlumniModel> searchMembers(
+    List<AlumniModel> all,
+    String query,
+  ) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return all;
+    return all.where((a) {
+      return a.memberName.toLowerCase().contains(q) ||
+          a.email.toLowerCase().contains(q) ||
+          a.companyName.toLowerCase().contains(q) ||
+          a.branchName.toLowerCase().contains(q);
     }).toList();
   }
 
-  static Future<List<AlumniModel>> getAlumniByDepartment(
-      String department) async {
-    final snapshot = await _firestore
-        .collection('users')
-        .where('Branch_Name', isEqualTo: department)
-        .orderBy('Member_Name')
+  static Future<List<AlumniModel>> getByDepartment(String branchName) async {
+    final snap = await _membersRef
+        .orderByChild('Branch_Name')
+        .equalTo(branchName)
         .get();
-    return snapshot.docs
-        .map((doc) => AlumniModel.fromFirestore(doc))
-        .toList();
+    final map = snap.value;
+    return _parseMembersMap(map);
   }
 
-  static Future<List<AlumniModel>> getAlumniByYear(String year) async {
-    final snapshot = await _firestore
-        .collection('users')
-        .where('Year', isEqualTo: year)
-        .orderBy('Member_Name')
-        .get();
-    return snapshot.docs
-        .map((doc) => AlumniModel.fromFirestore(doc))
-        .toList();
+  static Future<List<AlumniModel>> getByYear(String year) async {
+    final snap =
+        await _membersRef.orderByChild('Year').equalTo(year).get();
+    return _parseMembersMap(snap.value);
   }
 
-  // ─── Posts Collection ───────────────────────────────
+  static Future<int> getAlumniCount() async {
+    final snap = await _membersRef.get();
+    final v = snap.value;
+    if (v is Map) return v.length;
+    return 0;
+  }
 
-  static Stream<List<PostModel>> getPostsStream() {
-    return _firestore
+  static Future<int> getPostsCount() async {
+    final q = await FirebaseFirestore.instance
         .collection('posts')
+        .count()
+        .get();
+    return q.count ?? 0;
+  }
+
+  static CollectionReference<Map<String, dynamic>> get _postsCol =>
+      FirebaseFirestore.instance.collection('posts');
+
+  static Stream<List<PostModel>> postsStream() {
+    return _postsCol
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => PostModel.fromFirestore(doc)).toList());
+        .map(
+          (q) => q.docs.map(PostModel.fromFirestore).toList(),
+        );
   }
 
-  static Future<void> createPost(PostModel post) async {
-    await _firestore.collection('posts').add(post.toFirestore());
+  static Future<void> createPost({
+    required String content,
+    String imageUrl = '',
+  }) async {
+    final user = auth.currentUser;
+    if (user == null) throw StateError('Not signed in');
+    final alum = await getCurrentMember(user.email);
+    final doc = PostModel(
+      id: '',
+      authorUid: user.uid,
+      authorName: alum?.memberName ?? user.displayName ?? user.email ?? 'Alum',
+      authorPhotoUrl: alum?.imgUrl ?? user.photoURL ?? '',
+      content: content,
+      imageUrl: imageUrl,
+      likes: const [],
+      commentCount: 0,
+      createdAt: DateTime.now(),
+      authorDepartment: alum?.department ?? '',
+      authorGraduationYear: alum?.graduationYear ?? '',
+    );
+    await _postsCol.add(doc.toFirestore());
   }
 
-  static Future<void> toggleLike(String postId, String userId) async {
-    final postRef = _firestore.collection('posts').doc(postId);
-    final doc = await postRef.get();
-    if (doc.exists) {
-      final likes = List<String>.from(doc.data()?['likes'] ?? []);
+  static Future<void> toggleLike(String postId, String userId) {
+    final ref = _postsCol.doc(postId);
+    return FirebaseFirestore.instance.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) return;
+      final d = snap.data() ?? {};
+      final raw = d['likes'];
+      final likes = <String>[
+        ...?((raw as List?)?.map((e) => e.toString())),
+      ];
       if (likes.contains(userId)) {
         likes.remove(userId);
       } else {
         likes.add(userId);
       }
-      await postRef.update({'likes': likes});
-    }
-  }
-
-  // ─── Auth ───────────────────────────────────────────
-
-  static User? get currentUser => _auth.currentUser;
-
-  static Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  static Future<UserCredential> signIn(String email, String password) async {
-    return await _auth.signInWithEmailAndPassword(
-        email: email.trim(), password: password);
-  }
-
-  /// Sign up only allowed if [email] exists in the `users` collection (Email field).
-  /// Throws [Exception] with message 'no-alumni-email' when no matching user doc is found.
-  static Future<UserCredential> signUp(String email, String password) async {
-    final normalizedEmail = email.trim().toLowerCase();
-    final snapshot = await _firestore
-        .collection('users')
-        .where('Email', isEqualTo: normalizedEmail)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isEmpty) {
-      throw Exception('no-alumni-email');
-    }
-    return await _auth.createUserWithEmailAndPassword(
-        email: email.trim(), password: password);
-  }
-
-  static Future<void> signOut() async {
-    await _auth.signOut();
-  }
-
-  // ─── Social sign-in (future) ────────────────────────
-  // To add Google sign-in later:
-  // 1. Enable Google in Firebase Console → Authentication → Sign-in method.
-  // 2. Add google_sign_in (and for web, use signInWithPopup/signInWithRedirect).
-  // 3. After sign-in, link to alumni the same way: get currentUser.email and call
-  //    getCurrentAlumni() (or query users where Email == email) to show profile.
-
-  // ─── Stats ──────────────────────────────────────────
-
-  static Future<Map<String, int>> getStats() async {
-    final usersCount =
-        await _firestore.collection('users').count().get();
-    final postsCount =
-        await _firestore.collection('posts').count().get();
-    return {
-      'alumni': usersCount.count ?? 0,
-      'posts': postsCount.count ?? 0,
-    };
-  }
-
-  // ─── Departments (Branch_Name from users) ────────────
-
-  static Future<List<String>> getDepartments() async {
-    final snapshot = await _firestore.collection('users').get();
-    final departments = snapshot.docs
-        .map((doc) => doc.data()['Branch_Name'] as String?)
-        .where((d) => d != null && d.isNotEmpty)
-        .cast<String>()
-        .toSet()
-        .toList();
-    departments.sort();
-    return departments;
+      tx.update(ref, {'likes': likes});
+    });
   }
 }

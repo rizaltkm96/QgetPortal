@@ -1,279 +1,295 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../theme/app_theme.dart';
-import '../models/alumni_model.dart';
-import '../providers/app_providers.dart';
-import '../services/firebase_service.dart';
 
-/// Add (`alumni == null`) or edit an alumni row in Firestore `users`.
-class AlumniMemberFormScreen extends ConsumerStatefulWidget {
-  const AlumniMemberFormScreen({super.key, this.alumni});
+import 'package:qget_portal/providers/ui_state_providers.dart';
+import 'package:qget_portal/widgets/app_gradient_background.dart';
+import 'package:qget_portal/widgets/glass.dart';
 
-  final AlumniModel? alumni;
+class AlumniMemberFormScreen extends ConsumerWidget {
+  const AlumniMemberFormScreen({super.key});
 
-  bool get isEditing => alumni != null;
-
-  @override
-  ConsumerState<AlumniMemberFormScreen> createState() =>
-      _AlumniMemberFormScreenState();
-}
-
-class _AlumniMemberFormScreenState extends ConsumerState<AlumniMemberFormScreen> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _emailController;
-  late final TextEditingController _nameController;
-  late final TextEditingController _yearController;
-  late final TextEditingController _branchController;
-  late final TextEditingController _companyController;
-  late final TextEditingController _positionController;
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final a = widget.alumni;
-    _emailController = TextEditingController(text: a?.email ?? '');
-    _nameController = TextEditingController(text: a?.name ?? '');
-    _yearController = TextEditingController(text: a?.year ?? '');
-    _branchController = TextEditingController(text: a?.branchName ?? '');
-    _companyController = TextEditingController(text: a?.companyName ?? '');
-    _positionController = TextEditingController(text: a?.position ?? '');
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _nameController.dispose();
-    _yearController.dispose();
-    _branchController.dispose();
-    _companyController.dispose();
-    _positionController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (FirebaseService.currentUser == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sign in to manage members', style: GoogleFonts.inter()),
-          ),
-        );
-      }
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      if (widget.isEditing) {
-        final data = <String, dynamic>{
-          'Member_Name': _nameController.text.trim(),
-          'Year': _yearController.text.trim(),
-          'Branch_Name': _branchController.text.trim(),
-          'Company_Name': _companyController.text.trim(),
-          'Position': _positionController.text.trim(),
-        };
-        await FirebaseService.updateUserProfile(widget.alumni!.uid, data);
-
-        final current = await FirebaseService.getCurrentAlumni();
-        if (current != null && current.uid == widget.alumni!.uid) {
-          ref.invalidate(currentAlumniProvider);
-        }
-      } else {
-        try {
-          await FirebaseService.createAlumniMember(
-            memberName: _nameController.text.trim(),
-            email: _emailController.text.trim().toLowerCase(),
-            year: _yearController.text.trim(),
-            branchName: _branchController.text.trim(),
-            companyName: _companyController.text.trim(),
-            position: _positionController.text.trim(),
-          );
-        } on StateError catch (e) {
-          if (e.message == 'email-already-exists') {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'That email is already registered',
-                    style: GoogleFonts.inter(),
-                  ),
-                ),
-              );
-            }
-            return;
-          }
-          rethrow;
-        }
-      }
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              widget.isEditing ? 'Member updated' : 'Member added',
-              style: GoogleFonts.inter(),
+  static Widget _sectionTitle(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, top: 4),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
             ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e', style: GoogleFonts.inter()),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.isEditing ? 'Edit member' : 'Add member',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-        ),
-        actions: [
-          IconButton(
-            icon: _isLoading
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.check_rounded),
-            onPressed: _isLoading ? null : _save,
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            _buildField(
-              'Email',
-              _emailController,
-              Icons.email_outlined,
-              readOnly: widget.isEditing,
-              validator: (v) {
-                final s = v?.trim() ?? '';
-                if (s.isEmpty) return 'Required';
-                if (!s.contains('@')) return 'Enter a valid email';
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-            _buildField(
-              'Full name',
-              _nameController,
-              Icons.person_outline_rounded,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Required';
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _buildField(
-                    'Batch (year)',
-                    _yearController,
-                    Icons.calendar_today_rounded,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildField(
-                    'Branch',
-                    _branchController,
-                    Icons.school_outlined,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _buildField(
-              'Company',
-              _companyController,
-              Icons.work_outline_rounded,
-            ),
-            const SizedBox(height: 20),
-            _buildField(
-              'Position',
-              _positionController,
-              Icons.badge_outlined,
-            ),
-            const SizedBox(height: 32),
-            if (!widget.isEditing)
-              Text(
-                'After adding, the member can sign up with this email (same as directory record).',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                  height: 1.4,
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _buildField(
-    String label,
-    TextEditingController controller,
-    IconData icon, {
-    bool readOnly = false,
-    String? Function(String?)? validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: readOnly ? AppColors.elevatedDark.withOpacity(0.6) : AppColors.cardDark,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.borderDark),
-          ),
-          child: TextFormField(
-            controller: controller,
-            readOnly: readOnly,
-            validator: validator,
-            style: GoogleFonts.inter(color: AppColors.textPrimary),
-            decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ui = ref.watch(memberFormNotifierProvider);
+    final n = ref.read(memberFormNotifierProvider.notifier);
+
+    return AppGradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(title: const Text('Add directory member')),
+        body: Form(
+          key: n.formKey,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            children: [
+              GlassPanel(
+                borderRadius: 22,
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _sectionTitle(context, 'Identity & work'),
+                    TextFormField(
+                      controller: n.name,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Member name *',
+                      ),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.email,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Email *',
+                      ),
+                      validator: (v) => (v == null || !v.contains('@'))
+                          ? 'Valid email required'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.year,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Graduation year',
+                        hintText: 'e.g. 1990',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.branch,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Branch / department',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.company,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Company',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.position,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Position / role',
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 16),
+              GlassPanel(
+                borderRadius: 22,
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _sectionTitle(context, 'Contact & photo'),
+                    TextFormField(
+                      controller: n.contact,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Contact number',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.whatsapp,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'WhatsApp number',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.blood,
+                      decoration: const InputDecoration(
+                        labelText: 'Blood group',
+                        hintText: 'e.g. O positive',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.social,
+                      keyboardType: TextInputType.url,
+                      decoration: const InputDecoration(
+                        labelText: 'Social / website link',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.imgUrl,
+                      keyboardType: TextInputType.url,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Photo URL (ImgURL)',
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.imageName,
+                      decoration: const InputDecoration(
+                        labelText: 'Image file name',
+                        hintText: 'e.g. Photo.jpeg',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              GlassPanel(
+                borderRadius: 22,
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _sectionTitle(context, 'Spouse'),
+                    TextFormField(
+                      controller: n.spouseName,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Spouse name',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.spouseIsMember,
+                      decoration: const InputDecoration(
+                        labelText: 'Spouse is alum member?',
+                        hintText: 'yes / no (optional)',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              GlassPanel(
+                borderRadius: 22,
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _sectionTitle(context, 'Children'),
+                    TextFormField(
+                      controller: n.child1Name,
+                      decoration: const InputDecoration(
+                        labelText: 'Child 1 name',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: n.child1Dob,
+                      decoration: const InputDecoration(
+                        labelText: 'Child 1 DOB',
+                        hintText: 'yyyy-mm-dd',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.child2Name,
+                      decoration: const InputDecoration(
+                        labelText: 'Child 2 name',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: n.child2Dob,
+                      decoration: const InputDecoration(
+                        labelText: 'Child 2 DOB',
+                        hintText: 'yyyy-mm-dd',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.child3Name,
+                      decoration: const InputDecoration(
+                        labelText: 'Child 3 name',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: n.child3Dob,
+                      decoration: const InputDecoration(
+                        labelText: 'Child 3 DOB',
+                        hintText: 'yyyy-mm-dd',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.child4Name,
+                      decoration: const InputDecoration(
+                        labelText: 'Child 4 name',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: n.child4Dob,
+                      decoration: const InputDecoration(
+                        labelText: 'Child 4 DOB',
+                        hintText: 'yyyy-mm-dd',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              GlassPanel(
+                borderRadius: 22,
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _sectionTitle(context, 'IDs (optional)'),
+                    TextFormField(
+                      controller: n.uid,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'UID',
+                        hintText: 'Numeric ID if used',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: n.efNumber,
+                      decoration: const InputDecoration(
+                        labelText: 'EF number',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              GradientFilledButton(
+                onPressed: ui.busy ? null : () => n.submit(context),
+                busy: ui.busy,
+                label: 'Save to roster',
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

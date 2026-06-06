@@ -1,230 +1,134 @@
 import 'package:excel/excel.dart';
+import 'package:file_saver/file_saver.dart';
+import 'package:flutter/foundation.dart';
 
-import '../models/alumni_model.dart';
+import 'package:qget_portal/models/alumni_model.dart';
+import 'package:qget_portal/utils/alumni_created_at_parse.dart';
 
-/// One exportable column (Sl. No. + member fields; document ID is not offered).
-///
-/// [columnWidth] is Excel column width (character units, same as in the `excel` package).
-class AlumniExcelColumn {
-  AlumniExcelColumn({
-    required this.id,
-    required this.headerLabel,
-    required this.columnWidth,
-    required CellValue Function(AlumniModel a, int serialOneBased) cellBuilder,
-  }) : _cellBuilder = cellBuilder;
-
-  final String id;
-  final String headerLabel;
-  /// Excel column width (~average character count visible without clipping).
-  final double columnWidth;
-  final CellValue Function(AlumniModel a, int serialOneBased) _cellBuilder;
-
-  CellValue cellFor(AlumniModel a, int serialOneBased) =>
-      _cellBuilder(a, serialOneBased);
-}
-
-/// Builds an `.xlsx` workbook of alumni (sorted by name) with optional columns.
 class AlumniExcelExportService {
   AlumniExcelExportService._();
 
-  /// Ordered definitions; [selectedIds] must use this order when filtering.
-  static final List<AlumniExcelColumn> allColumns = [
-    AlumniExcelColumn(
-      id: 'serial',
-      headerLabel: 'Sl. No.',
-      columnWidth: 10,
-      cellBuilder: (_, serial) => IntCellValue(serial),
-    ),
-    AlumniExcelColumn(
-      id: 'memberName',
-      headerLabel: 'Member Name',
-      columnWidth: 34,
-      cellBuilder: (a, _) => TextCellValue(a.name),
-    ),
-    AlumniExcelColumn(
-      id: 'email',
-      headerLabel: 'Email',
-      columnWidth: 38,
-      cellBuilder: (a, _) => TextCellValue(a.email),
-    ),
-    AlumniExcelColumn(
-      id: 'createdAt',
-      headerLabel: 'Created At',
-      columnWidth: 14,
-      cellBuilder: (a, _) => TextCellValue(a.createdAt ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'photoUrl',
-      headerLabel: 'Photo URL',
-      columnWidth: 56,
-      cellBuilder: (a, _) => TextCellValue(a.photoUrl ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'year',
-      headerLabel: 'Year',
-      columnWidth: 12,
-      cellBuilder: (a, _) => TextCellValue(a.year ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'branchName',
-      headerLabel: 'Branch Name',
-      columnWidth: 28,
-      cellBuilder: (a, _) => TextCellValue(a.branchName ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'companyName',
-      headerLabel: 'Company Name',
-      columnWidth: 32,
-      cellBuilder: (a, _) => TextCellValue(a.companyName ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'position',
-      headerLabel: 'Position',
-      columnWidth: 28,
-      cellBuilder: (a, _) => TextCellValue(a.position ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'contactNumber',
-      headerLabel: 'Contact Number',
-      columnWidth: 18,
-      cellBuilder: (a, _) => TextCellValue(a.contactNumber ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'whatsappNumber',
-      headerLabel: 'Whatsapp Number',
-      columnWidth: 18,
-      cellBuilder: (a, _) => TextCellValue(a.whatsappNumber ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'bloodGroup',
-      headerLabel: 'Blood Group',
-      columnWidth: 14,
-      cellBuilder: (a, _) => TextCellValue(a.bloodGroup ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'spouseName',
-      headerLabel: 'Spouse Name',
-      columnWidth: 28,
-      cellBuilder: (a, _) => TextCellValue(a.spouseName ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'spouseIsMember',
-      headerLabel: 'Spouse Is Member',
-      columnWidth: 18,
-      cellBuilder: (a, _) => TextCellValue(a.spouseIsMember ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'socialMediaLink',
-      headerLabel: 'Social Media Link',
-      columnWidth: 50,
-      cellBuilder: (a, _) => TextCellValue(a.socialMediaLink ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'numericUid',
-      headerLabel: 'UID (numeric)',
-      columnWidth: 14,
-      cellBuilder: (a, _) => a.numericUid != null
-          ? IntCellValue(a.numericUid!)
-          : TextCellValue(''),
-    ),
-    AlumniExcelColumn(
-      id: 'efNumber',
-      headerLabel: 'EF Number',
-      columnWidth: 16,
-      cellBuilder: (a, _) => TextCellValue(a.efNumber ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'child1Name',
-      headerLabel: 'Child 1 Name',
-      columnWidth: 22,
-      cellBuilder: (a, _) => TextCellValue(a.child1Name ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'child1Dob',
-      headerLabel: 'Child 1 DOB',
-      columnWidth: 16,
-      cellBuilder: (a, _) => TextCellValue(a.child1Dob ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'child2Name',
-      headerLabel: 'Child 2 Name',
-      columnWidth: 22,
-      cellBuilder: (a, _) => TextCellValue(a.child2Name ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'child2Dob',
-      headerLabel: 'Child 2 DOB',
-      columnWidth: 16,
-      cellBuilder: (a, _) => TextCellValue(a.child2Dob ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'child3Name',
-      headerLabel: 'Child 3 Name',
-      columnWidth: 22,
-      cellBuilder: (a, _) => TextCellValue(a.child3Name ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'child3Dob',
-      headerLabel: 'Child 3 DOB',
-      columnWidth: 16,
-      cellBuilder: (a, _) => TextCellValue(a.child3Dob ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'child4Name',
-      headerLabel: 'Child 4 Name',
-      columnWidth: 22,
-      cellBuilder: (a, _) => TextCellValue(a.child4Name ?? ''),
-    ),
-    AlumniExcelColumn(
-      id: 'child4Dob',
-      headerLabel: 'Child 4 DOB',
-      columnWidth: 16,
-      cellBuilder: (a, _) => TextCellValue(a.child4Dob ?? ''),
-    ),
-  ];
+  /// Column order aligned with RTDB / admin roster fields.
+  static List<String> get _headers => [
+        'Member_Name',
+        'Email',
+        'Year',
+        'Branch_Name',
+        'Company_Name',
+        'Position',
+        'Contact_Number',
+        'Whatsapp_Number',
+        'Blood_Group',
+        'Spouse_Name',
+        'Spouse_Is_Member',
+        'Social_Media_Link',
+        'UID',
+        'EF_Number',
+        'ImageName',
+        'ImgURL',
+        'Child1_Name',
+        'Child1_DOB',
+        'Child2_Name',
+        'Child2_DOB',
+        'Child3_Name',
+        'Child3_DOB',
+        'Child4_Name',
+        'Child4_DOB',
+        'CreatedAt',
+        'createdAt_ms',
+        'updatedAt_ms',
+      ];
 
-  static List<int> buildWorkbookBytes(
-    List<AlumniModel> alumni,
-    Set<String> selectedIds,
-  ) {
-    if (selectedIds.isEmpty) {
-      throw ArgumentError('At least one column must be selected');
-    }
+  static List<String> _rowValues(AlumniModel m) => [
+        m.memberName,
+        m.email,
+        m.year,
+        m.branchName,
+        m.companyName,
+        m.position,
+        m.contactNumber,
+        m.whatsappNumber,
+        m.bloodGroup,
+        m.spouseName,
+        m.spouseIsMember,
+        m.socialMediaLink,
+        m.uidField,
+        m.efNumber,
+        m.imageName,
+        m.imgUrl,
+        m.child1Name,
+        m.child1Dob,
+        m.child2Name,
+        m.child2Dob,
+        m.child3Name,
+        m.child3Dob,
+        m.child4Name,
+        m.child4Dob,
+        m.createdAt,
+        m.createdAtMillis?.toString() ?? '',
+        m.updatedAtMillis?.toString() ?? '',
+      ];
 
-    final active = allColumns.where((c) => selectedIds.contains(c.id)).toList();
-    if (active.isEmpty) {
-      throw ArgumentError('No matching columns for selection');
-    }
-
-    final sorted = List<AlumniModel>.from(alumni)
-      ..sort((a, b) => a.name.compareTo(b.name));
-
+  static Future<void> exportMembers(List<AlumniModel> members) async {
     final excel = Excel.createExcel();
-    final defaultName = excel.getDefaultSheet() ?? excel.tables.keys.first;
-    const sheetName = 'Alumni Directory';
-    excel.rename(defaultName, sheetName);
-    final sheet = excel[sheetName];
+    final sheet = excel['Alumni'];
+    excel.delete('Sheet1');
 
-    sheet.appendRow(
-      active.map((c) => TextCellValue(c.headerLabel)).toList(),
-    );
-
-    for (var i = 0; i < sorted.length; i++) {
-      final serial = i + 1;
-      final a = sorted[i];
-      sheet.appendRow(
-        active.map((c) => c.cellFor(a, serial)).toList(),
-      );
+    for (var c = 0; c < _headers.length; c++) {
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0))
+          .value = TextCellValue(_headers[c]);
     }
 
-    for (var c = 0; c < active.length; c++) {
-      sheet.setColumnWidth(c, active[c].columnWidth);
+    members.sort((a, b) {
+      final ma = a.createdAtMillis;
+      final mb = b.createdAtMillis;
+      if (ma != null && mb != null) {
+        return mb.compareTo(ma);
+      }
+      if (ma != null) return -1;
+      if (mb != null) return 1;
+      final ta = parseAlumniCreatedAt(a.createdAt);
+      final tb = parseAlumniCreatedAt(b.createdAt);
+      if (ta == null && tb == null) {
+        return a.memberName.compareTo(b.memberName);
+      }
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      return tb.compareTo(ta);
+    });
+
+    for (var r = 0; r < members.length; r++) {
+      final m = members[r];
+      final row = r + 1;
+      final values = _rowValues(m);
+      for (var c = 0; c < values.length; c++) {
+        sheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: row))
+            .value = TextCellValue(values[c]);
+      }
     }
 
     final bytes = excel.encode();
-    if (bytes == null) {
-      throw StateError('Failed to encode Excel file');
+    if (bytes == null) return;
+    final data = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
+    final name =
+        'alumni_export_${DateTime.now().toIso8601String().split('T').first}';
+
+    if (kIsWeb) {
+      await FileSaver.instance.saveFile(
+        name: '$name.xlsx',
+        bytes: data,
+        ext: 'xlsx',
+        mimeType: MimeType.microsoftExcel,
+      );
+    } else {
+      await FileSaver.instance.saveAs(
+        name: name,
+        bytes: data,
+        ext: 'xlsx',
+        mimeType: MimeType.microsoftExcel,
+      );
     }
-    return bytes;
   }
 }
